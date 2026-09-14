@@ -7,9 +7,11 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '@/context/auth-context';
 import {
   vaultApi,
   PrescriptionResponse,
@@ -20,6 +22,7 @@ import {
 type VaultTab = 'prescriptions' | 'test-results' | 'conditions';
 
 export default function VaultScreen() {
+  const { isAuthenticated } = useAuth();
   const [activeTab, setActiveTab] = useState<VaultTab>('prescriptions');
   const [prescriptions, setPrescriptions] = useState<PrescriptionResponse[]>([]);
   const [testResults, setTestResults] = useState<LabTestResultResponse[]>([]);
@@ -29,6 +32,11 @@ export default function VaultScreen() {
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
 
   const fetchTabContent = async () => {
+    if (!isAuthenticated) {
+      setIsLoading(false);
+      setIsRefreshing(false);
+      return;
+    }
     setIsLoading(true);
     try {
       if (activeTab === 'prescriptions') {
@@ -51,8 +59,12 @@ export default function VaultScreen() {
   };
 
   useEffect(() => {
-    fetchTabContent();
-  }, [activeTab, prescriptionFilter]);
+    if (isAuthenticated) {
+      fetchTabContent();
+    } else {
+      setIsLoading(false);
+    }
+  }, [isAuthenticated, activeTab, prescriptionFilter]);
 
   const onRefresh = () => {
     setIsRefreshing(true);
@@ -314,7 +326,20 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 10,
   },
-  segmentBtnActive: { backgroundColor: '#FFFFFF', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 3, elevation: 1 },
+  segmentBtnActive: {
+    backgroundColor: '#FFFFFF',
+    ...Platform.select({
+      web: {
+        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOpacity: 0.05,
+        shadowRadius: 3,
+        elevation: 1,
+      },
+    }),
+  },
   segmentText: { fontSize: 13, color: '#666', fontWeight: '500' },
   segmentTextActive: { fontSize: 13, color: '#2E7D51', fontWeight: '700' },
   scrollContent: { paddingBottom: 32 },

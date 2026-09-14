@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   Modal,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,7 +18,7 @@ import { vaultApi, HealthConditionResponse } from '@/api/vault.api';
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { user, logout, refreshUser } = useAuth();
+  const { user, logout, refreshUser, isAuthenticated } = useAuth();
 
   const [conditions, setConditions] = useState<HealthConditionResponse[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -25,8 +26,12 @@ export default function HomeScreen() {
   const [showLogoutDialog, setShowLogoutDialog] = useState<boolean>(false);
 
   const loadData = async () => {
+    if (!isAuthenticated) {
+      setIsLoading(false);
+      setIsRefreshing(false);
+      return;
+    }
     try {
-      await refreshUser();
       const conditionList = await vaultApi.getConditions();
       setConditions(conditionList);
     } catch (err) {
@@ -38,12 +43,21 @@ export default function HomeScreen() {
   };
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (isAuthenticated) {
+      loadData();
+    } else {
+      setIsLoading(false);
+    }
+  }, [isAuthenticated]);
 
-  const onRefresh = () => {
+  const onRefresh = async () => {
     setIsRefreshing(true);
-    loadData();
+    try {
+      await refreshUser();
+      await loadData();
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   const handleConfirmLogout = async () => {
@@ -208,11 +222,18 @@ const styles = StyleSheet.create({
     padding: 18,
     borderWidth: 1,
     borderColor: '#EFEFEF',
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 6,
-    elevation: 2,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 2px 6px rgba(0, 0, 0, 0.04)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOpacity: 0.04,
+        shadowOffset: { width: 0, height: 2 },
+        shadowRadius: 6,
+        elevation: 2,
+      },
+    }),
     marginBottom: 24,
   },
   badgePills: { flexDirection: 'row', gap: 8, marginBottom: 12 },
@@ -295,11 +316,18 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 380,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 6,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
+        elevation: 6,
+      },
+    }),
   },
   dialogIconWrapper: {
     width: 52,

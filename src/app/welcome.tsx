@@ -100,11 +100,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 24,
-    shadowColor: '#4CAF7D',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.28,
-    shadowRadius: 16,
-    elevation: 8,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 8px 16px rgba(76, 175, 125, 0.28)',
+      },
+      default: {
+        shadowColor: '#4CAF7D',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.28,
+        shadowRadius: 16,
+        elevation: 8,
+      },
+    }),
   },
   appTitle: {
     fontSize: 28,
@@ -134,11 +141,18 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingVertical: 16,
     width: '100%',
-    shadowColor: '#4CAF7D',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 3,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 4px 8px rgba(76, 175, 125, 0.2)',
+      },
+      default: {
+        shadowColor: '#4CAF7D',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+        elevation: 3,
+      },
+    }),
   },
   primaryButtonText: {
     color: '#FFFFFF',
