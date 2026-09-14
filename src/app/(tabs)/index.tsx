@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,6 +22,7 @@ export default function HomeScreen() {
   const [conditions, setConditions] = useState<HealthConditionResponse[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [showLogoutDialog, setShowLogoutDialog] = useState<boolean>(false);
 
   const loadData = async () => {
     try {
@@ -44,6 +46,12 @@ export default function HomeScreen() {
     loadData();
   };
 
+  const handleConfirmLogout = async () => {
+    setShowLogoutDialog(false);
+    await logout();
+    router.replace('/welcome');
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView
@@ -56,7 +64,11 @@ export default function HomeScreen() {
             <Text style={styles.welcomeSubtitle}>Welcome back,</Text>
             <Text style={styles.patientName}>{user?.fullName || 'Patient'}</Text>
           </View>
-          <TouchableOpacity style={styles.logoutButton} onPress={logout}>
+          <TouchableOpacity
+            style={styles.logoutButton}
+            onPress={() => setShowLogoutDialog(true)}
+            activeOpacity={0.7}
+          >
             <Ionicons name="log-out-outline" size={20} color="#666" />
           </TouchableOpacity>
         </View>
@@ -143,6 +155,42 @@ export default function HomeScreen() {
           {/* TODO: Flesh out UI - Connect to encounters endpoint and render encounter accordion cards */}
         </View>
       </ScrollView>
+
+      {/* Logout Confirmation Dialog */}
+      <Modal
+        visible={showLogoutDialog}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowLogoutDialog(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.dialogCard}>
+            <View style={styles.dialogIconWrapper}>
+              <Ionicons name="log-out-outline" size={28} color="#D32F2F" />
+            </View>
+            <Text style={styles.dialogTitle}>Log Out</Text>
+            <Text style={styles.dialogMessage}>
+              Are you sure you want to end your current session?
+            </Text>
+            <View style={styles.dialogActions}>
+              <TouchableOpacity
+                style={styles.cancelBtn}
+                onPress={() => setShowLogoutDialog(false)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.cancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.logoutBtn}
+                onPress={handleConfirmLogout}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.logoutBtnText}>Log Out</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -233,4 +281,77 @@ const styles = StyleSheet.create({
   },
   skeletonTitle: { fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 4 },
   skeletonSubtitle: { fontSize: 12, color: '#6B7280', lineHeight: 16 },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  dialogCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 380,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  dialogIconWrapper: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#FFEBEE',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  dialogTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1A1A1A',
+    marginBottom: 8,
+  },
+  dialogMessage: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 24,
+  },
+  dialogActions: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  cancelBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  cancelBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  logoutBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+    backgroundColor: '#DC2626',
+  },
+  logoutBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
 });
