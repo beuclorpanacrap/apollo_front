@@ -1,0 +1,67 @@
+import { apiClient } from './client';
+import { components } from './types';
+
+export type AccessGrantResponse = components['schemas']['AccessGrantResponse'];
+export type PrescriptionResponse = components['schemas']['PrescriptionResponse'];
+export type LabTestResultResponse = components['schemas']['LabTestResultResponse'];
+export type HealthConditionResponse = components['schemas']['HealthConditionResponse'];
+export type CreateHealthConditionRequest = components['schemas']['CreateHealthConditionRequest'];
+
+export const vaultApi = {
+  /**
+   * Generates a 6-digit access PIN valid for 15 minutes to unlock doctor consultation.
+   */
+  async generateAccessGrant(): Promise<AccessGrantResponse> {
+    return apiClient<AccessGrantResponse>('/api/v1/patient/vault/access-grants', {
+      method: 'POST',
+    });
+  },
+
+  /**
+   * Retrieves patient prescriptions, optionally filtered by status (ACTIVE, FULFILLED, CANCELLED).
+   */
+  async getPrescriptions(status?: 'ACTIVE' | 'FULFILLED' | 'CANCELLED'): Promise<PrescriptionResponse[]> {
+    return apiClient<PrescriptionResponse[]>('/api/v1/patient/vault/prescriptions', {
+      method: 'GET',
+      params: status ? { status } : undefined,
+    });
+  },
+
+  /**
+   * Retrieves time-series lab test results sorted chronologically ascending.
+   */
+  async getTestResults(testName?: string): Promise<LabTestResultResponse[]> {
+    return apiClient<LabTestResultResponse[]>('/api/v1/patient/vault/test-results', {
+      method: 'GET',
+      params: testName ? { testName } : undefined,
+    });
+  },
+
+  /**
+   * Retrieves patient-declared and doctor-verified health conditions/allergies.
+   */
+  async getConditions(): Promise<HealthConditionResponse[]> {
+    return apiClient<HealthConditionResponse[]>('/api/v1/patient/vault/conditions', {
+      method: 'GET',
+    });
+  },
+
+  /**
+   * Adds a baseline health condition.
+   */
+  async addCondition(request: CreateHealthConditionRequest): Promise<HealthConditionResponse> {
+    return apiClient<HealthConditionResponse>('/api/v1/patient/vault/conditions', {
+      method: 'POST',
+      body: request,
+    });
+  },
+
+  /**
+   * Deletes a patient-declared condition.
+   */
+  async deleteCondition(conditionId: string): Promise<void> {
+    await apiClient<void>(`/api/v1/patient/vault/conditions/${conditionId}`, {
+      method: 'DELETE',
+    });
+  },
+};
