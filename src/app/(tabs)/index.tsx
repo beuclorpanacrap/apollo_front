@@ -75,6 +75,8 @@ export default function HomeScreen() {
     router.replace('/welcome');
   };
 
+  const isBaselineIncomplete = !user?.gender;
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView
@@ -95,6 +97,31 @@ export default function HomeScreen() {
             <Ionicons name="log-out-outline" size={20} color="#666" />
           </TouchableOpacity>
         </View>
+
+        {/* Incomplete Baseline Banner */}
+        {isBaselineIncomplete && (
+          <TouchableOpacity
+            style={styles.incompleteBanner}
+            onPress={() => router.push('/onboarding')}
+            activeOpacity={0.85}
+          >
+            <View style={styles.bannerIconContainer}>
+              <Ionicons name="medkit" size={22} color="#059669" />
+            </View>
+            <View style={styles.bannerContent}>
+              <View style={styles.bannerTitleRow}>
+                <Text style={styles.bannerTitle}>Complete Your Medical Baseline</Text>
+                <Ionicons name="chevron-forward" size={16} color="#059669" />
+              </View>
+              <Text style={styles.bannerSubtitle}>
+                Add your biometrics, allergies, and lifestyle factors so doctors have your baseline ready.
+              </Text>
+              <View style={styles.bannerActionRow}>
+                <Text style={styles.bannerActionText}>Start Survey →</Text>
+              </View>
+            </View>
+          </TouchableOpacity>
+        )}
 
         {/* Patient Identity Badge Card */}
         <View style={styles.identityCard}>
@@ -429,5 +456,65 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+  incompleteBanner: {
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1.5,
+    borderColor: '#A7F3D0',
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 16,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 2px 8px rgba(5, 150, 105, 0.08)',
+      },
+      default: {
+        shadowColor: '#059669',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 6,
+        elevation: 2,
+      },
+    }),
+  },
+  bannerIconContainer: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: '#D1FAE5',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bannerContent: {
+    flex: 1,
+  },
+  bannerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  bannerTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#065F46',
+    flex: 1,
+  },
+  bannerSubtitle: {
+    fontSize: 13,
+    color: '#047857',
+    lineHeight: 18,
+    marginBottom: 8,
+  },
+  bannerActionRow: {
+    alignSelf: 'flex-start',
+  },
+  bannerActionText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#059669',
   },
 });

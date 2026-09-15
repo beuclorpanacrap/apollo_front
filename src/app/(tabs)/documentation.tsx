@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 
 interface FaqItem {
   id: string;
@@ -45,6 +46,7 @@ const FAQS: FaqItem[] = [
 ];
 
 export default function DocumentationScreen() {
+  const router = useRouter();
   const [expandedFaq, setExpandedFaq] = useState<string | null>('1');
   const [ticketSubject, setTicketSubject] = useState('');
   const [ticketMessage, setTicketMessage] = useState('');
@@ -73,6 +75,26 @@ export default function DocumentationScreen() {
         <View style={styles.header}>
           <Text style={styles.title}>Documentation & Guide</Text>
           <Text style={styles.subtitle}>Learn about Apollo vault architecture, data privacy, and support.</Text>
+        </View>
+
+        {/* Medical Baseline Quick Action Card */}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Ionicons name="clipboard-outline" size={20} color="#4CAF7D" />
+            <Text style={styles.cardTitle}>Medical Profile & Baseline</Text>
+          </View>
+          <Text style={styles.supportDesc}>
+            Review or update your biometrics, diagnosed chronic conditions, known allergies, and lifestyle factors whenever needed.
+          </Text>
+          <TouchableOpacity
+            style={styles.baselineActionBtn}
+            onPress={() => router.push('/onboarding')}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="create-outline" size={18} color="#FFFFFF" />
+            <Text style={styles.baselineActionBtnText}>Update Clinical Baseline</Text>
+            <Ionicons name="arrow-forward" size={16} color="#FFFFFF" style={{ marginLeft: 'auto' }} />
+          </TouchableOpacity>
         </View>
 
         {/* Onboarding Guide: How Apollo Works */}
@@ -262,4 +284,19 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   successText: { fontSize: 13, color: '#2E7D51', fontWeight: '600' },
+  baselineActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#4CAF7D',
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginTop: 4,
+  },
+  baselineActionBtnText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
 });
