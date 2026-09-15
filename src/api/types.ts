@@ -208,6 +208,50 @@ export interface paths {
         patch: operations["updateStatus"];
         trace?: never;
     };
+    "/api/v1/patient/vault/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update patient profile baseline attributes
+         * @description Updates baseline attributes (gender, height, weight) for the authenticated patient.
+         */
+        patch: operations["updateProfile"];
+        trace?: never;
+    };
+    "/api/v1/patient/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get authenticated patient profile
+         * @description Retrieves demographic and baseline attributes for the authenticated patient.
+         */
+        get: operations["getProfile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update patient baseline attributes and profile
+         * @description Updates baseline attributes (gender, height, weight) for the authenticated patient.
+         */
+        patch: operations["updateProfile_1"];
+        trace?: never;
+    };
     "/api/v1/admin/doctors/{doctorId}/role": {
         parameters: {
             query?: never;
@@ -340,7 +384,7 @@ export interface components {
              * @example ALLERGY
              * @enum {string}
              */
-            type: "ALLERGY" | "CHRONIC_CONDITION" | "PAST_HISTORY" | "MEDICATION" | "SURGERY" | "OTHER";
+            type: "ALLERGY" | "CHRONIC_CONDITION" | "LIFESTYLE" | "PAST_HISTORY" | "MEDICATION" | "SURGERY" | "OTHER";
             /**
              * Format: date
              * @description Date when condition was recorded or diagnosed (defaults to current date if omitted)
@@ -366,7 +410,7 @@ export interface components {
              * @example ALLERGY
              * @enum {string}
              */
-            type?: "ALLERGY" | "CHRONIC_CONDITION" | "PAST_HISTORY" | "MEDICATION" | "SURGERY" | "OTHER";
+            type?: "ALLERGY" | "CHRONIC_CONDITION" | "LIFESTYLE" | "PAST_HISTORY" | "MEDICATION" | "SURGERY" | "OTHER";
             /**
              * @description Source origin of the record
              * @example PATIENT_DECLARED
@@ -555,6 +599,23 @@ export interface components {
              * @example O+
              */
             bloodType?: string;
+            /**
+             * @description Gender identity
+             * @example FEMALE
+             */
+            gender?: string;
+            /**
+             * Format: double
+             * @description Height in centimeters
+             * @example 172.5
+             */
+            heightCm?: number;
+            /**
+             * Format: double
+             * @description Weight in kilograms
+             * @example 65
+             */
+            weightKg?: number;
         };
         /** @description Prescription details for pharmacy dispensing and clinical audit */
         PrescriptionResponse: {
@@ -740,7 +801,7 @@ export interface components {
              * @example CHRONIC_CONDITION
              * @enum {string}
              */
-            type: "ALLERGY" | "CHRONIC_CONDITION" | "PAST_HISTORY" | "MEDICATION" | "SURGERY" | "OTHER";
+            type: "ALLERGY" | "CHRONIC_CONDITION" | "LIFESTYLE" | "PAST_HISTORY" | "MEDICATION" | "SURGERY" | "OTHER";
         };
         /** @description Details of an appended clinical consultation encounter */
         ClinicalEncounterResponse: {
@@ -891,6 +952,82 @@ export interface components {
              */
             status: "ACTIVE" | "FULFILLED" | "CANCELLED";
         };
+        /** @description Request body to update patient profile baseline attributes */
+        UpdatePatientProfileRequest: {
+            /**
+             * @description Gender identity (e.g. MALE, FEMALE, OTHER, PREFER_NOT_TO_SAY)
+             * @example FEMALE
+             */
+            gender?: string;
+            /**
+             * Format: double
+             * @description Height in centimeters
+             * @example 172.5
+             */
+            heightCm?: number;
+            /**
+             * Format: double
+             * @description Weight in kilograms
+             * @example 65
+             */
+            weightKg?: number;
+        };
+        /** @description Detailed patient profile response */
+        PatientProfileResponse: {
+            /**
+             * Format: uuid
+             * @description Patient profile unique identifier
+             */
+            id?: string;
+            /**
+             * Format: uuid
+             * @description Associated user unique identifier
+             */
+            userId?: string;
+            /**
+             * @description Patient first name
+             * @example Jane
+             */
+            firstName?: string;
+            /**
+             * @description Patient last name
+             * @example Doe
+             */
+            lastName?: string;
+            /**
+             * Format: date
+             * @description Date of birth
+             * @example 1990-05-15
+             */
+            dateOfBirth?: string;
+            /**
+             * @description Blood type
+             * @example O+
+             */
+            bloodType?: string;
+            /**
+             * @description Gender identity
+             * @example FEMALE
+             */
+            gender?: string;
+            /**
+             * Format: double
+             * @description Height in centimeters
+             * @example 172.5
+             */
+            heightCm?: number;
+            /**
+             * Format: double
+             * @description Weight in kilograms
+             * @example 65
+             */
+            weightKg?: number;
+            /**
+             * Format: date-time
+             * @description Profile creation timestamp
+             */
+            createdAt?: string;
+        };
         /** @description Request body for updating a doctor's active permission role for presentation demos */
         UpdateDoctorRoleRequest: {
             /**
@@ -955,6 +1092,34 @@ export interface components {
             role?: "ROLE_PATIENT" | "ROLE_DOCTOR" | "ROLE_ADMIN";
             /** @description Full name of the user or doctor */
             fullName?: string;
+            /**
+             * Format: date
+             * @description Date of birth (patient profiles)
+             * @example 1990-05-15
+             */
+            dateOfBirth?: string;
+            /**
+             * @description Blood type (patient profiles)
+             * @example O+
+             */
+            bloodType?: string;
+            /**
+             * @description Gender identity (patient profiles)
+             * @example FEMALE
+             */
+            gender?: string;
+            /**
+             * Format: double
+             * @description Height in centimeters (patient profiles)
+             * @example 172.5
+             */
+            heightCm?: number;
+            /**
+             * Format: double
+             * @description Weight in kilograms (patient profiles)
+             * @example 65
+             */
+            weightKg?: number;
             /**
              * Format: date-time
              * @description Account creation timestamp
@@ -1497,6 +1662,173 @@ export interface operations {
                 };
             };
             /** @description Prescription not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePatientProfileRequest"];
+            };
+        };
+        responses: {
+            /** @description Patient profile updated successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PatientProfileResponse"];
+                };
+            };
+            /** @description Invalid request payload */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized - Missing or invalid JWT */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden - Requires ROLE_PATIENT */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Patient profile not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Patient profile retrieved successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PatientProfileResponse"];
+                };
+            };
+            /** @description Unauthorized - Missing or invalid JWT */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden - Requires ROLE_PATIENT */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Patient profile not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateProfile_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePatientProfileRequest"];
+            };
+        };
+        responses: {
+            /** @description Patient profile updated successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PatientProfileResponse"];
+                };
+            };
+            /** @description Invalid request payload */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized - Missing or invalid JWT */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden - Requires ROLE_PATIENT */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Patient profile not found */
             404: {
                 headers: {
                     [name: string]: unknown;

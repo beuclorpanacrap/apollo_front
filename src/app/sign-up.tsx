@@ -53,7 +53,7 @@ export default function SignUpScreen() {
         dateOfBirth: dateOfBirth.trim(),
         bloodType,
       });
-      router.replace('/(tabs)');
+      router.replace('/onboarding' as any);
     } catch (err: any) {
       setErrorMessage(err.message || 'Registration failed. Please check your information.');
     } finally {

@@ -6,8 +6,29 @@ export type PrescriptionResponse = components['schemas']['PrescriptionResponse']
 export type LabTestResultResponse = components['schemas']['LabTestResultResponse'];
 export type HealthConditionResponse = components['schemas']['HealthConditionResponse'];
 export type CreateHealthConditionRequest = components['schemas']['CreateHealthConditionRequest'];
+export type UpdatePatientProfileRequest = components['schemas']['UpdatePatientProfileRequest'];
+export type PatientProfileResponse = components['schemas']['PatientProfileResponse'];
 
 export const vaultApi = {
+  /**
+   * Updates patient baseline biometrics and profile attributes (gender, height, weight).
+   */
+  async updateProfile(data: UpdatePatientProfileRequest): Promise<PatientProfileResponse> {
+    return apiClient<PatientProfileResponse>('/api/v1/patient/profile', {
+      method: 'PATCH',
+      body: data,
+    });
+  },
+
+  /**
+   * Retrieves patient profile including baseline attributes.
+   */
+  async getProfile(): Promise<PatientProfileResponse> {
+    return apiClient<PatientProfileResponse>('/api/v1/patient/profile', {
+      method: 'GET',
+    });
+  },
+
   /**
    * Generates a 6-digit access PIN valid for 15 minutes to unlock doctor consultation.
    */
