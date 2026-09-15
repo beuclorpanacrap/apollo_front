@@ -8,6 +8,8 @@ export type HealthConditionResponse = components['schemas']['HealthConditionResp
 export type CreateHealthConditionRequest = components['schemas']['CreateHealthConditionRequest'];
 export type UpdatePatientProfileRequest = components['schemas']['UpdatePatientProfileRequest'];
 export type PatientProfileResponse = components['schemas']['PatientProfileResponse'];
+export type BaselineConditionItem = components['schemas']['BaselineConditionItem'];
+export type SyncBaselineConditionsRequest = components['schemas']['SyncBaselineConditionsRequest'];
 
 export const vaultApi = {
   /**
@@ -74,6 +76,24 @@ export const vaultApi = {
     return apiClient<HealthConditionResponse>('/api/v1/patient/vault/conditions', {
       method: 'POST',
       body: request,
+    });
+  },
+
+  /**
+   * Batch synchronizes patient-declared baseline conditions, atomically replacing previous patient entries.
+   */
+  async syncBaselineConditions(
+    conditionsOrRequest:
+      | Array<{ title: string; type: 'ALLERGY' | 'CHRONIC_CONDITION' | 'LIFESTYLE' | string; notes?: string }>
+      | SyncBaselineConditionsRequest
+  ): Promise<HealthConditionResponse[]> {
+    const body: SyncBaselineConditionsRequest = Array.isArray(conditionsOrRequest)
+      ? { conditions: conditionsOrRequest as BaselineConditionItem[] }
+      : conditionsOrRequest;
+
+    return apiClient<HealthConditionResponse[]>('/api/v1/patient/vault/conditions/baseline', {
+      method: 'PUT',
+      body,
     });
   },
 

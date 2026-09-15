@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,7 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/context/auth-context';
-import { vaultApi } from '@/api/vault.api';
+import { vaultApi, BaselineConditionItem } from '@/api/vault.api';
 
 type GenderOption = 'MALE' | 'FEMALE' | 'OTHER' | 'PREFER_NOT_TO_SAY';
 
@@ -31,7 +31,7 @@ const ALCOHOL_OPTIONS = ['Non-Drinker', 'Occasional / Social'];
 
 export default function OnboardingScreen() {
   const router = useRouter();
-  const { refreshUser } = useAuth();
+  const { user, refreshUser } = useAuth();
 
   // Biometrics State
   const [selectedGender, setSelectedGender] = useState<GenderOption | null>(null);
@@ -53,6 +53,48 @@ export default function OnboardingScreen() {
   // Status State
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Pre-fill existing data if returning to update baseline
+  useEffect(() => {
+    if (user?.gender) {
+      setSelectedGender(user.gender as GenderOption);
+    }
+    if (user?.heightCm) {
+      setHeightCm(String(user.heightCm));
+    }
+    if (user?.weightKg) {
+      setWeightKg(String(user.weightKg));
+    }
+
+    const loadExistingConditions = async () => {
+      try {
+        const existing = await vaultApi.getConditions();
+        const allergies: string[] = [];
+        const conditions: string[] = [];
+        for (const item of existing) {
+          if (item.sourceType === 'PATIENT_DECLARED') {
+            if (item.type === 'ALLERGY' && item.title) {
+              allergies.push(item.title);
+            } else if (item.type === 'CHRONIC_CONDITION' && item.title) {
+              conditions.push(item.title);
+            } else if (item.type === 'LIFESTYLE' && item.title) {
+              if (item.title.startsWith('Tobacco: ')) {
+                setSelectedTobacco(item.title.replace('Tobacco: ', ''));
+              } else if (item.title.startsWith('Alcohol: ')) {
+                setSelectedAlcohol(item.title.replace('Alcohol: ', ''));
+              }
+            }
+          }
+        }
+        if (allergies.length > 0) setSelectedAllergies(allergies);
+        if (conditions.length > 0) setSelectedConditions(conditions);
+      } catch (e) {
+        console.warn('[Onboarding] Could not pre-fetch existing conditions:', e);
+      }
+    };
+
+    loadExistingConditions();
+  }, [user]);
 
   // Allergies Handlers
   const handleToggleAllergy = (allergy: string) => {
@@ -146,55 +188,57 @@ export default function OnboardingScreen() {
     try {
       setIsSubmitting(true);
 
-      // 1. Update Profile Biometrics
-      await vaultApi.updateProfile({
-        gender: selectedGender,
-        heightCm: heightNum,
-        weightKg: weightNum,
-      });
+      // 1. Consolidate Baseline Conditions (Allergies, Chronic Conditions, Lifestyle)
+      const conditionItems: BaselineConditionItem[] = [];
 
-      const todayStr = new Date().toISOString().slice(0, 10);
-
-      // 2. Post Allergies
+      // Allergies
       for (const allergy of selectedAllergies) {
-        await vaultApi.addCondition({
-          title: allergy,
-          type: 'ALLERGY',
-          dateRecorded: todayStr,
-        });
-      }
-
-      // 3. Post Chronic Conditions
-      for (const cond of selectedConditions) {
-        if (cond !== 'None') {
-          await vaultApi.addCondition({
-            title: cond,
-            type: 'CHRONIC_CONDITION',
-            dateRecorded: todayStr,
+        if (allergy !== 'No Known Allergies' && allergy.trim()) {
+          conditionItems.push({
+            title: allergy.trim(),
+            type: 'ALLERGY',
           });
         }
       }
 
-      // 4. Post Lifestyle Habits
+      // Chronic Conditions
+      for (const cond of selectedConditions) {
+        if (cond !== 'None' && cond.trim()) {
+          conditionItems.push({
+            title: cond.trim(),
+            type: 'CHRONIC_CONDITION',
+          });
+        }
+      }
+
+      // Lifestyle Habits
       if (selectedTobacco) {
-        await vaultApi.addCondition({
+        conditionItems.push({
           title: `Tobacco: ${selectedTobacco}`,
           type: 'LIFESTYLE',
-          dateRecorded: todayStr,
         });
       }
       if (selectedAlcohol) {
-        await vaultApi.addCondition({
+        conditionItems.push({
           title: `Alcohol: ${selectedAlcohol}`,
           type: 'LIFESTYLE',
-          dateRecorded: todayStr,
         });
       }
 
-      // 5. Refresh Auth Session User Cache
+      // 2. Atomically Sync Baseline Conditions & Update Biometrics in parallel
+      await Promise.all([
+        vaultApi.updateProfile({
+          gender: selectedGender,
+          heightCm: heightNum,
+          weightKg: weightNum,
+        }),
+        vaultApi.syncBaselineConditions(conditionItems),
+      ]);
+
+      // 3. Refresh Auth Session User Cache
       await refreshUser();
 
-      // 6. Navigate to Main Tabs
+      // 4. Navigate to Main Tabs
       router.replace('/(tabs)');
     } catch (err: any) {
       console.warn('[Onboarding] Error submitting baseline survey:', err);
