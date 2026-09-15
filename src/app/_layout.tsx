@@ -59,12 +59,17 @@ function RouteGuard() {
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: '#F8FAFC' },
+      }}
+    >
       <Stack.Screen name="welcome" />
       <Stack.Screen name="onboarding" />
       <Stack.Screen name="(tabs)" />
-      <Stack.Screen name="sign-in" options={{ presentation: 'modal' }} />
-      <Stack.Screen name="sign-up" options={{ presentation: 'modal' }} />
+      <Stack.Screen name="sign-in" />
+      <Stack.Screen name="sign-up" />
     </Stack>
   );
 }
@@ -80,11 +85,21 @@ function WebFrameContainer({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+const ApolloTheme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    primary: '#4CAF7D',
+    background: '#F8FAFC',
+    card: '#FFFFFF',
+    border: 'transparent',
+  },
+};
+
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
   return (
     <AuthProvider>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+      <ThemeProvider value={ApolloTheme}>
         <AnimatedSplashOverlay />
         <WebFrameContainer>
           <RouteGuard />
@@ -103,7 +118,7 @@ const styles = StyleSheet.create({
   },
   webOuter: {
     flex: 1,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#F8FAFC',
     alignItems: 'center',
     justifyContent: 'center',
     width: '100%',
@@ -112,22 +127,6 @@ const styles = StyleSheet.create({
   webFrame: {
     flex: 1,
     width: '100%',
-    maxWidth: 500,
-    backgroundColor: '#FFFFFF',
-    ...Platform.select({
-      web: {
-        boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)',
-      },
-      default: {
-        shadowColor: '#000000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.08,
-        shadowRadius: 16,
-      },
-    }),
-    borderLeftWidth: 1,
-    borderRightWidth: 1,
-    borderColor: '#E5E7EB',
-    overflow: 'hidden',
+    backgroundColor: '#F8FAFC',
   },
 });
