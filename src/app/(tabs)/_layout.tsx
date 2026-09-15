@@ -1,6 +1,6 @@
-import React from 'react';
-import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { Tabs } from 'expo-router';
+import { Text } from 'react-native';
 
 export default function TabLayout() {
   return (
@@ -29,6 +29,11 @@ export default function TabLayout() {
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? 'home' : 'home-outline'} size={22} color={color} />
           ),
+          tabBarLabel: ({ focused }) => (
+            <Text style={{ color: focused ? '#4CAF7D' : '#8E8E93', fontSize: 11, fontWeight: '500' }}>
+              Home
+            </Text>
+          ),
         }}
       />
       <Tabs.Screen
@@ -37,6 +42,11 @@ export default function TabLayout() {
           title: 'Vault',
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? 'file-tray-full' : 'file-tray-full-outline'} size={22} color={color} />
+          ),
+          tabBarLabel: ({ focused }) => (
+            <Text style={{ color: focused ? '#4CAF7D' : '#8E8E93', fontSize: 11, fontWeight: '500' }}>
+              Vault
+            </Text>
           ),
         }}
       />
@@ -47,6 +57,11 @@ export default function TabLayout() {
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? 'key' : 'key-outline'} size={22} color={color} />
           ),
+          tabBarLabel: ({ focused }) => (
+            <Text style={{ color: focused ? '#4CAF7D' : '#8E8E93', fontSize: 11, fontWeight: '500' }}>
+              Consultation
+            </Text>
+          ),
         }}
       />
       <Tabs.Screen
@@ -55,6 +70,11 @@ export default function TabLayout() {
           title: 'Docs',
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? 'book' : 'book-outline'} size={22} color={color} />
+          ),
+          tabBarLabel: ({ focused }) => (
+            <Text style={{ color: focused ? '#4CAF7D' : '#8E8E93', fontSize: 11, fontWeight: '500' }}>
+              Documentation
+            </Text>
           ),
         }}
       />
