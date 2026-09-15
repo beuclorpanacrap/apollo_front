@@ -1,24 +1,36 @@
-import React, { useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  ActivityIndicator,
-  RefreshControl,
-  Modal,
-  Platform,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { HealthConditionResponse, vaultApi } from '@/api/vault.api';
+import { useAuth } from '@/context/auth-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useAuth } from '@/context/auth-context';
-import { vaultApi, HealthConditionResponse } from '@/api/vault.api';
+import { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Modal,
+  Platform,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function HomeScreen() {
   const router = useRouter();
   const { user, logout, refreshUser, isAuthenticated } = useAuth();
+  const [time, setTime] = useState(new Date());
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+        setTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(interval);
+}, []);
+
+  let hours = time.getHours();
+  let timeOfDay = hours < 12 ? 'Good morning' : hours < 18 ? 'Good afternoon' : 'Good evening';
 
   const [conditions, setConditions] = useState<HealthConditionResponse[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -75,7 +87,7 @@ export default function HomeScreen() {
         {/* Top Header Card */}
         <View style={styles.headerRow}>
           <View>
-            <Text style={styles.welcomeSubtitle}>Welcome back,</Text>
+            <Text style={styles.welcomeSubtitle}>{timeOfDay},</Text>
             <Text style={styles.patientName}>{user?.fullName || 'Patient'}</Text>
           </View>
           <TouchableOpacity
