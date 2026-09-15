@@ -30,15 +30,23 @@ function RouteGuard() {
     if (isLoading) return;
 
     const firstSegment = segments[0] as string | undefined;
-    const inAuthFlow =
-      firstSegment === 'welcome' ||
+    const inAuthGroup =
       firstSegment === 'sign-in' ||
-      firstSegment === 'sign-up';
+      firstSegment === 'sign-up' ||
+      firstSegment === 'welcome';
+    const isOnboarding = firstSegment === 'onboarding';
 
-    if (!isAuthenticated && !inAuthFlow) {
+    if (!isAuthenticated && !inAuthGroup) {
+      // Redirect unauthenticated users to welcome
       router.replace('/welcome');
-    } else if (isAuthenticated && inAuthFlow) {
-      router.replace('/(tabs)');
+    } else if (isAuthenticated && inAuthGroup) {
+      if (firstSegment === 'sign-up') {
+        // Redirect newly registered users directly to the onboarding survey
+        router.replace('/onboarding');
+      } else {
+        // Only redirect away from sign-in/welcome, DO NOT redirect away from onboarding
+        router.replace('/(tabs)');
+      }
     }
   }, [isAuthenticated, isLoading, segments]);
 
