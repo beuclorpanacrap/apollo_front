@@ -128,7 +128,7 @@ export default function HomeScreen() {
           <View style={styles.badgePills}>
             <View style={styles.bloodBadge}>
               <Ionicons name="water" size={14} color="#D32F2F" />
-              <Text style={styles.bloodText}>Blood Type: {user?.bloodType || 'O+'}</Text>
+              <Text style={styles.bloodText}>Blood Type: {user?.bloodType || 'Unknown'}</Text>
             </View>
             <View style={styles.roleBadge}>
               <Text style={styles.roleText}>Verified Patient</Text>

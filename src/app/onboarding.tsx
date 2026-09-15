@@ -28,6 +28,7 @@ const DEFAULT_ALLERGIES = ['Penicillin', 'Latex', 'Peanuts', 'Sulfa Drugs', 'No 
 const DEFAULT_CONDITIONS = ['Asthma', 'Hypertension', 'Type 2 Diabetes', 'None'];
 const TOBACCO_OPTIONS = ['Non-Smoker', 'Smoker'];
 const ALCOHOL_OPTIONS = ['Non-Drinker', 'Occasional / Social'];
+const BLOOD_TYPE_OPTIONS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'Unknown'];
 
 export default function OnboardingScreen() {
   const router = useRouter();
@@ -37,6 +38,7 @@ export default function OnboardingScreen() {
   const [selectedGender, setSelectedGender] = useState<GenderOption | null>(null);
   const [heightCm, setHeightCm] = useState<string>('');
   const [weightKg, setWeightKg] = useState<string>('');
+  const [bloodType, setBloodType] = useState<string>(user?.bloodType || '');
 
   // Allergies State
   const [selectedAllergies, setSelectedAllergies] = useState<string[]>([]);
@@ -64,6 +66,9 @@ export default function OnboardingScreen() {
     }
     if (user?.weightKg) {
       setWeightKg(String(user.weightKg));
+    }
+    if (user?.bloodType) {
+      setBloodType(user.bloodType);
     }
 
     const loadExistingConditions = async () => {
@@ -231,6 +236,7 @@ export default function OnboardingScreen() {
           gender: selectedGender,
           heightCm: heightNum,
           weightKg: weightNum,
+          bloodType: bloodType.trim() ? bloodType.trim().toUpperCase() : undefined,
         }),
         vaultApi.syncBaselineConditions(conditionItems),
       ]);
@@ -347,6 +353,31 @@ export default function OnboardingScreen() {
                 </View>
               </View>
             </View>
+          </View>
+
+          {/* Blood Type Selector */}
+          <Text style={[styles.fieldLabel, { marginTop: 18 }]}>Blood Type</Text>
+          <View style={styles.bloodTypeGrid}>
+            {BLOOD_TYPE_OPTIONS.map((type) => {
+              const isSelected = bloodType.trim().toUpperCase() === type.trim().toUpperCase();
+              return (
+                <TouchableOpacity
+                  key={type}
+                  style={[styles.bloodTypePill, isSelected && styles.bloodTypePillSelected]}
+                  onPress={() => setBloodType(isSelected ? '' : type)}
+                  activeOpacity={0.7}
+                >
+                  <Text
+                    style={[
+                      styles.bloodTypePillText,
+                      isSelected && styles.bloodTypePillTextSelected,
+                    ]}
+                  >
+                    {type}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
 
@@ -819,6 +850,35 @@ const styles = StyleSheet.create({
   submitText: {
     color: '#FFFFFF',
     fontSize: 16,
+    fontWeight: '700',
+  },
+  bloodTypeGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  bloodTypePill: {
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 12,
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    minWidth: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bloodTypePillSelected: {
+    backgroundColor: '#4CAF7D',
+    borderColor: '#4CAF7D',
+  },
+  bloodTypePillText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#4B5563',
+  },
+  bloodTypePillTextSelected: {
+    color: '#FFFFFF',
     fontWeight: '700',
   },
 });

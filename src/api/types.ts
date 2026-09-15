@@ -1032,6 +1032,11 @@ export interface components {
              * @example 65
              */
             weightKg?: number;
+            /**
+             * @description Blood type (e.g. A+, O-, B+)
+             * @example O+
+             */
+            bloodType?: string;
         };
         /** @description Detailed patient profile response */
         PatientProfileResponse: {

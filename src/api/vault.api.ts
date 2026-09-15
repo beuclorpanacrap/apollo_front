@@ -13,7 +13,7 @@ export type SyncBaselineConditionsRequest = components['schemas']['SyncBaselineC
 
 export const vaultApi = {
   /**
-   * Updates patient baseline biometrics and profile attributes (gender, height, weight).
+   * Updates patient baseline biometrics and profile attributes (gender, height, weight, bloodType).
    */
   async updateProfile(data: UpdatePatientProfileRequest): Promise<PatientProfileResponse> {
     return apiClient<PatientProfileResponse>('/api/v1/patient/profile', {
