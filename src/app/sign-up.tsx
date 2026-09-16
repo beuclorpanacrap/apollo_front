@@ -7,6 +7,7 @@ import {
   StyleSheet,
   ScrollView,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -22,11 +23,8 @@ export default function SignUpScreen() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState('');
-  const [bloodType, setBloodType] = useState('O+');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  const bloodTypes = ['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'];
 
   const handleSignUp = async () => {
     setErrorMessage(null);
@@ -36,10 +34,15 @@ export default function SignUpScreen() {
       return;
     }
 
-    // Basic date format validation YYYY-MM-DD
+    if (password.length < 8) {
+      setErrorMessage('Password must be at least 8 characters long.');
+      return;
+    }
+
+    // Date format validation YYYY-MM-DD
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (!dateRegex.test(dateOfBirth.trim())) {
-      setErrorMessage('Date of birth must be in YYYY-MM-DD format (e.g., 1995-04-12).');
+      setErrorMessage('Date of birth must be in YYYY-MM-DD format (e.g., 1990-05-15).');
       return;
     }
 
@@ -51,9 +54,8 @@ export default function SignUpScreen() {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         dateOfBirth: dateOfBirth.trim(),
-        bloodType,
       });
-      router.replace('/(tabs)');
+      router.replace('/onboarding');
     } catch (err: any) {
       setErrorMessage(err.message || 'Registration failed. Please check your information.');
     } finally {
@@ -62,211 +64,319 @@ export default function SignUpScreen() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-      <View style={styles.logo}>
-        <Ionicons name="medical-outline" size={32} color="white" />
-      </View>
-
-      <Text style={styles.title}>Create your</Text>
-      <Text style={styles.titleAccent}>Patient Health Vault</Text>
-      <Text style={styles.subtitle}>
-        Register to access encrypted health records and secure doctor consultations.
-      </Text>
-
-      {errorMessage && (
-        <View style={styles.errorContainer}>
-          <Ionicons name="alert-circle-outline" size={18} color="#D32F2F" />
-          <Text style={styles.errorText}>{errorMessage}</Text>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.scrollContainer}
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+    >
+      <View style={styles.innerCard}>
+        {/* Hero Section */}
+        <View style={styles.heroSection}>
+          <View style={styles.iconContainer}>
+            <Ionicons name="shield-checkmark" size={28} color="#4CAF7D" />
+          </View>
+          <Text style={styles.title}>Create Your Account</Text>
+          <Text style={styles.subtitle}>
+            Join Apollo to manage and own your sovereign medical records.
+          </Text>
         </View>
-      )}
 
-      <View style={styles.row}>
-        <View style={styles.halfCol}>
-          <Text style={styles.label}>First name *</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="John"
-            value={firstName}
-            onChangeText={setFirstName}
-            editable={!isSubmitting}
-          />
+        {errorMessage && (
+          <View style={styles.errorContainer}>
+            <Ionicons name="alert-circle-outline" size={18} color="#DC2626" />
+            <Text style={styles.errorText}>{errorMessage}</Text>
+          </View>
+        )}
+
+        {/* Form Fields */}
+        <View style={styles.row}>
+          <View style={styles.halfCol}>
+            <Text style={styles.label}>
+              First name <Text style={styles.requiredStar}>*</Text>
+            </Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Jane"
+              placeholderTextColor="#9CA3AF"
+              value={firstName}
+              onChangeText={setFirstName}
+              autoCapitalize="words"
+              editable={!isSubmitting}
+            />
+          </View>
+          <View style={styles.halfCol}>
+            <Text style={styles.label}>
+              Last name <Text style={styles.requiredStar}>*</Text>
+            </Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Doe"
+              placeholderTextColor="#9CA3AF"
+              value={lastName}
+              onChangeText={setLastName}
+              autoCapitalize="words"
+              editable={!isSubmitting}
+            />
+          </View>
         </View>
-        <View style={styles.halfCol}>
-          <Text style={styles.label}>Last name *</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Doe"
-            value={lastName}
-            onChangeText={setLastName}
-            editable={!isSubmitting}
-          />
-        </View>
-      </View>
 
-      <Text style={styles.label}>Email address *</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="you@example.com"
-        value={email}
-        onChangeText={setEmail}
-        autoCapitalize="none"
-        keyboardType="email-address"
-        editable={!isSubmitting}
-      />
-
-      <Text style={styles.label}>Password *</Text>
-      <View style={styles.passwordRow}>
+        {/* Email Field */}
+        <Text style={styles.label}>
+          Email address <Text style={styles.requiredStar}>*</Text>
+        </Text>
         <TextInput
-          style={styles.passwordInput}
-          placeholder="••••••••"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry={!showPassword}
+          style={styles.input}
+          placeholder="you@example.com"
+          placeholderTextColor="#9CA3AF"
+          value={email}
+          onChangeText={setEmail}
+          autoCapitalize="none"
+          keyboardType="email-address"
           editable={!isSubmitting}
         />
-        <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-          <Ionicons name={showPassword ? 'eye-outline' : 'eye-off-outline'} size={20} color="#888" />
-        </TouchableOpacity>
-      </View>
-      <Text style={styles.helperText}>Must be ≥8 characters with uppercase, lowercase, digit, and symbol.</Text>
 
-      <Text style={styles.label}>Date of birth (YYYY-MM-DD) *</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="1990-01-15"
-        value={dateOfBirth}
-        onChangeText={setDateOfBirth}
-        editable={!isSubmitting}
-      />
-
-      <Text style={styles.label}>Blood Type</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.bloodTypeRow}>
-        {bloodTypes.map((type) => (
-          <TouchableOpacity
-            key={type}
-            style={[styles.bloodTypePill, bloodType === type && styles.bloodTypePillActive]}
-            onPress={() => setBloodType(type)}
-          >
-            <Text style={bloodType === type ? styles.bloodTypeTextActive : styles.bloodTypeText}>
-              {type}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-
-      <TouchableOpacity
-        style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
-        onPress={handleSignUp}
-        disabled={isSubmitting}
-      >
-        {isSubmitting ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.submitText}>Create Account</Text>
-        )}
-      </TouchableOpacity>
-
-      <Text style={styles.footer}>
-        Already have an account?{' '}
-        <Text style={styles.link} onPress={() => router.push('/sign-in')}>
-          Sign In
+        {/* Password Field */}
+        <Text style={styles.label}>
+          Password <Text style={styles.requiredStar}>*</Text>
         </Text>
-      </Text>
+        <View style={styles.passwordContainer}>
+          <TextInput
+            style={styles.passwordInput}
+            placeholder="At least 8 characters"
+            placeholderTextColor="#9CA3AF"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry={!showPassword}
+            editable={!isSubmitting}
+          />
+          <TouchableOpacity
+            style={styles.eyeButton}
+            onPress={() => setShowPassword(!showPassword)}
+            activeOpacity={0.7}
+          >
+            <Ionicons
+              name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+              size={20}
+              color="#6B7280"
+            />
+          </TouchableOpacity>
+        </View>
+        <Text style={styles.helperText}>
+          Must be at least 8 characters with upper, lower, digit, and symbol.
+        </Text>
+
+        {/* Date of Birth Field */}
+        <Text style={styles.label}>
+          Date of birth (YYYY-MM-DD) <Text style={styles.requiredStar}>*</Text>
+        </Text>
+        <TextInput
+          style={styles.input}
+          placeholder="1990-05-15"
+          placeholderTextColor="#9CA3AF"
+          value={dateOfBirth}
+          onChangeText={setDateOfBirth}
+          keyboardType="numbers-and-punctuation"
+          editable={!isSubmitting}
+        />
+
+        {/* Submit Primary CTA */}
+        <TouchableOpacity
+          style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
+          onPress={handleSignUp}
+          disabled={isSubmitting}
+          activeOpacity={0.8}
+        >
+          {isSubmitting ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <Text style={styles.submitText}>Create Account</Text>
+          )}
+        </TouchableOpacity>
+
+        {/* Footer Log In Link */}
+        <View style={styles.footerRow}>
+          <Text style={styles.footerText}>Already have an account? </Text>
+          <TouchableOpacity onPress={() => router.push('/sign-in')} activeOpacity={0.7}>
+            <Text style={styles.linkText}>Log In</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flexGrow: 1,
-    paddingHorizontal: 24,
-    paddingTop: 40,
-    paddingBottom: 40,
-    backgroundColor: '#fff',
-    maxWidth: 500,
-    alignSelf: 'center',
-    width: '100%',
+    flex: 1,
+    backgroundColor: '#F8FAFC',
   },
-  logo: {
-    width: 64,
-    height: 64,
-    borderRadius: 16,
-    backgroundColor: '#4CAF7D',
-    alignSelf: 'center',
+  scrollContainer: {
+    flexGrow: 1,
+    backgroundColor: '#F8FAFC',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 24,
+    paddingVertical: 36,
+    paddingHorizontal: 16,
   },
-  title: { fontSize: 26, fontWeight: '700', textAlign: 'center', color: '#1a1a1a' },
-  titleAccent: {
-    fontSize: 26,
-    fontWeight: '700',
-    fontStyle: 'italic',
-    textAlign: 'center',
-    color: '#4CAF7D',
+  innerCard: {
+    width: '100%',
+    maxWidth: 440,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 28,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.05)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 16,
+        elevation: 2,
+      },
+    }),
+  },
+  heroSection: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  iconContainer: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    backgroundColor: '#EAF7EF',
+    justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: 12,
   },
-  subtitle: {
-    fontSize: 14,
+  title: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#111827',
     textAlign: 'center',
-    color: '#777',
-    marginBottom: 24,
-    lineHeight: 20,
+    letterSpacing: -0.5,
+  },
+  subtitle: {
+    fontSize: 13,
+    color: '#6B7280',
+    textAlign: 'center',
+    marginTop: 4,
+    lineHeight: 18,
+    paddingHorizontal: 8,
   },
   errorContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFEBEE',
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
     padding: 12,
-    borderRadius: 8,
+    borderRadius: 12,
     marginBottom: 16,
     gap: 8,
   },
-  errorText: { color: '#D32F2F', fontSize: 13, flex: 1 },
-  row: { flexDirection: 'row', gap: 12 },
-  halfCol: { flex: 1 },
-  label: { fontSize: 14, fontWeight: '600', marginBottom: 8, color: '#1a1a1a' },
+  errorText: {
+    color: '#DC2626',
+    fontSize: 13,
+    flex: 1,
+    lineHeight: 18,
+  },
+  row: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  halfCol: {
+    flex: 1,
+  },
+  label: {
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 6,
+    color: '#374151',
+  },
+  requiredStar: {
+    color: '#DC2626',
+  },
   input: {
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 10,
-    paddingHorizontal: 14,
+    borderColor: '#E2E8F0',
+    borderRadius: 14,
+    paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 14,
-    marginBottom: 16,
+    color: '#111827',
+    backgroundColor: '#FFFFFF',
+    marginBottom: 14,
   },
-  passwordRow: {
+  passwordContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 10,
-    paddingHorizontal: 14,
+    borderColor: '#E2E8F0',
+    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
     marginBottom: 4,
   },
-  passwordInput: { flex: 1, paddingVertical: 12, fontSize: 14 },
-  helperText: { fontSize: 11, color: '#888', marginBottom: 16 },
-  bloodTypeRow: { flexDirection: 'row', gap: 8, marginBottom: 24 },
-  bloodTypePill: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#ddd',
+  passwordInput: {
+    flex: 1,
+    paddingVertical: 12,
+    fontSize: 14,
+    color: '#111827',
   },
-  bloodTypePillActive: { backgroundColor: '#EAF7EF', borderColor: '#4CAF7D' },
-  bloodTypeText: { fontSize: 13, color: '#555', fontWeight: '500' },
-  bloodTypeTextActive: { fontSize: 13, color: '#2E7D51', fontWeight: '700' },
+  eyeButton: {
+    padding: 6,
+  },
+  helperText: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    marginBottom: 14,
+    lineHeight: 15,
+  },
   submitButton: {
     backgroundColor: '#4CAF7D',
-    borderRadius: 12,
-    paddingVertical: 16,
+    borderRadius: 14,
+    paddingVertical: 15,
     alignItems: 'center',
-    marginBottom: 16,
-    marginTop: 8,
+    justifyContent: 'center',
+    marginTop: 6,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 4px 12px rgba(76, 175, 125, 0.25)',
+      },
+      default: {
+        shadowColor: '#4CAF7D',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.25,
+        shadowRadius: 8,
+        elevation: 3,
+      },
+    }),
   },
-  submitButtonDisabled: { opacity: 0.7 },
-  submitText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  footer: { textAlign: 'center', fontSize: 14, color: '#666' },
-  link: { color: '#4CAF7D', fontWeight: '600' },
+  submitButtonDisabled: {
+    opacity: 0.7,
+  },
+  submitText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  footerRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  footerText: {
+    fontSize: 13,
+    color: '#6B7280',
+  },
+  linkText: {
+    fontSize: 13,
+    color: '#4CAF7D',
+    fontWeight: '700',
+  },
 });
+

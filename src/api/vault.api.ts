@@ -6,8 +6,31 @@ export type PrescriptionResponse = components['schemas']['PrescriptionResponse']
 export type LabTestResultResponse = components['schemas']['LabTestResultResponse'];
 export type HealthConditionResponse = components['schemas']['HealthConditionResponse'];
 export type CreateHealthConditionRequest = components['schemas']['CreateHealthConditionRequest'];
+export type UpdatePatientProfileRequest = components['schemas']['UpdatePatientProfileRequest'];
+export type PatientProfileResponse = components['schemas']['PatientProfileResponse'];
+export type BaselineConditionItem = components['schemas']['BaselineConditionItem'];
+export type SyncBaselineConditionsRequest = components['schemas']['SyncBaselineConditionsRequest'];
 
 export const vaultApi = {
+  /**
+   * Updates patient baseline biometrics and profile attributes (gender, height, weight, bloodType).
+   */
+  async updateProfile(data: UpdatePatientProfileRequest): Promise<PatientProfileResponse> {
+    return apiClient<PatientProfileResponse>('/api/v1/patient/profile', {
+      method: 'PATCH',
+      body: data,
+    });
+  },
+
+  /**
+   * Retrieves patient profile including baseline attributes.
+   */
+  async getProfile(): Promise<PatientProfileResponse> {
+    return apiClient<PatientProfileResponse>('/api/v1/patient/profile', {
+      method: 'GET',
+    });
+  },
+
   /**
    * Generates a 6-digit access PIN valid for 15 minutes to unlock doctor consultation.
    */
@@ -53,6 +76,24 @@ export const vaultApi = {
     return apiClient<HealthConditionResponse>('/api/v1/patient/vault/conditions', {
       method: 'POST',
       body: request,
+    });
+  },
+
+  /**
+   * Batch synchronizes patient-declared baseline conditions, atomically replacing previous patient entries.
+   */
+  async syncBaselineConditions(
+    conditionsOrRequest:
+      | Array<{ title: string; type: 'ALLERGY' | 'CHRONIC_CONDITION' | 'LIFESTYLE' | string; notes?: string }>
+      | SyncBaselineConditionsRequest
+  ): Promise<HealthConditionResponse[]> {
+    const body: SyncBaselineConditionsRequest = Array.isArray(conditionsOrRequest)
+      ? { conditions: conditionsOrRequest as BaselineConditionItem[] }
+      : conditionsOrRequest;
+
+    return apiClient<HealthConditionResponse[]>('/api/v1/patient/vault/conditions/baseline', {
+      method: 'PUT',
+      body,
     });
   },
 

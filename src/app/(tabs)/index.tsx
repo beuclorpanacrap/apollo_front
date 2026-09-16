@@ -1,8 +1,4 @@
-import { HealthConditionResponse, vaultApi } from '@/api/vault.api';
-import { useAuth } from '@/context/auth-context';
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Modal,
@@ -15,6 +11,11 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useAuth } from '@/context/auth-context';
+import { HealthConditionResponse, vaultApi } from '@/api/vault.api';
+
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -62,6 +63,15 @@ export default function HomeScreen() {
     }
   }, [isAuthenticated]);
 
+  useFocusEffect(
+    useCallback(() => {
+      if (isAuthenticated) {
+        refreshUser();
+        loadData();
+      }
+    }, [isAuthenticated])
+  );
+
   const onRefresh = async () => {
     setIsRefreshing(true);
     try {
@@ -77,6 +87,8 @@ export default function HomeScreen() {
     await logout();
     router.replace('/welcome');
   };
+
+  const isBaselineIncomplete = !user?.gender;
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -99,22 +111,72 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* Incomplete Baseline Banner */}
+        {isBaselineIncomplete && (
+          <TouchableOpacity
+            style={styles.incompleteBanner}
+            onPress={() => router.push('/onboarding')}
+            activeOpacity={0.85}
+          >
+            <View style={styles.bannerIconContainer}>
+              <Ionicons name="medkit" size={22} color="#059669" />
+            </View>
+            <View style={styles.bannerContent}>
+              <View style={styles.bannerTitleRow}>
+                <Text style={styles.bannerTitle}>Complete Your Medical Baseline</Text>
+                <Ionicons name="chevron-forward" size={16} color="#059669" />
+              </View>
+              <Text style={styles.bannerSubtitle}>
+                Add your biometrics, allergies, and lifestyle factors so doctors have your baseline ready.
+              </Text>
+              <View style={styles.bannerActionRow}>
+                <Text style={styles.bannerActionText}>Start Survey →</Text>
+              </View>
+            </View>
+          </TouchableOpacity>
+        )}
+
         {/* Patient Identity Badge Card */}
         <View style={styles.identityCard}>
           <View style={styles.badgePills}>
             <View style={styles.bloodBadge}>
               <Ionicons name="water" size={14} color="#D32F2F" />
-              <Text style={styles.bloodText}>Blood Type: {(user as any)?.bloodType || 'O+'}</Text>
+              <Text style={styles.bloodText}>Blood Type: {user?.bloodType || 'Unknown'}</Text>
             </View>
             <View style={styles.roleBadge}>
               <Text style={styles.roleText}>Verified Patient</Text>
             </View>
+            {user?.gender ? (
+              <View style={styles.genderBadge}>
+                <Text style={styles.genderText}>{user.gender.replace('_', ' ')}</Text>
+              </View>
+            ) : null}
           </View>
 
           <Text style={styles.identityDetail}>Email: {user?.email || '—'}</Text>
-          {(user as any)?.dateOfBirth && (
-            <Text style={styles.identityDetail}>Date of Birth: {(user as any).dateOfBirth}</Text>
+          {user?.dateOfBirth && (
+            <Text style={styles.identityDetail}>Date of Birth: {user.dateOfBirth}</Text>
           )}
+
+          {/* Biometrics Stat Row (Height, Weight) */}
+          {(user?.heightCm || user?.weightKg) ? (
+            <View style={styles.biometricsRow}>
+              {user?.heightCm ? (
+                <View style={styles.biometricStat}>
+                  <Ionicons name="resize-outline" size={14} color="#4CAF7D" />
+                  <Text style={styles.biometricLabel}>Height:</Text>
+                  <Text style={styles.biometricValue}>{user.heightCm} cm</Text>
+                </View>
+              ) : null}
+              {user?.weightKg ? (
+                <View style={styles.biometricStat}>
+                  <Ionicons name="barbell-outline" size={14} color="#4CAF7D" />
+                  <Text style={styles.biometricLabel}>Weight:</Text>
+                  <Text style={styles.biometricValue}>{user.weightKg} kg</Text>
+                </View>
+              ) : null}
+            </View>
+          ) : null}
 
           {/* Quick CTA to Consultation */}
           <TouchableOpacity
@@ -253,7 +315,21 @@ const styles = StyleSheet.create({
   bloodText: { fontSize: 12, fontWeight: '600', color: '#C62828' },
   roleBadge: { backgroundColor: '#EAF7EF', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
   roleText: { fontSize: 12, fontWeight: '600', color: '#2E7D51' },
+  genderBadge: { backgroundColor: '#F3F4F6', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
+  genderText: { fontSize: 12, fontWeight: '600', color: '#4B5563' },
   identityDetail: { fontSize: 13, color: '#555', marginBottom: 4 },
+  biometricsRow: {
+    flexDirection: 'row',
+    gap: 16,
+    marginTop: 8,
+    marginBottom: 6,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+  },
+  biometricStat: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  biometricLabel: { fontSize: 12, color: '#6B7280', fontWeight: '500' },
+  biometricValue: { fontSize: 13, color: '#111827', fontWeight: '700' },
   consultationCta: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -393,5 +469,65 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+  incompleteBanner: {
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1.5,
+    borderColor: '#A7F3D0',
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 16,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 2px 8px rgba(5, 150, 105, 0.08)',
+      },
+      default: {
+        shadowColor: '#059669',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 6,
+        elevation: 2,
+      },
+    }),
+  },
+  bannerIconContainer: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: '#D1FAE5',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bannerContent: {
+    flex: 1,
+  },
+  bannerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  bannerTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#065F46',
+    flex: 1,
+  },
+  bannerSubtitle: {
+    fontSize: 13,
+    color: '#047857',
+    lineHeight: 18,
+    marginBottom: 8,
+  },
+  bannerActionRow: {
+    alignSelf: 'flex-start',
+  },
+  bannerActionText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#059669',
   },
 });

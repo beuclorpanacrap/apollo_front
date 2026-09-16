@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from 'expo-router';
 import { useAuth } from '@/context/auth-context';
 import {
   vaultApi,
@@ -31,7 +32,7 @@ export default function VaultScreen() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
 
-  const fetchTabContent = async () => {
+  const fetchTabContent = useCallback(async () => {
     if (!isAuthenticated) {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -56,15 +57,13 @@ export default function VaultScreen() {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  };
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      fetchTabContent();
-    } else {
-      setIsLoading(false);
-    }
   }, [isAuthenticated, activeTab, prescriptionFilter]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchTabContent();
+    }, [fetchTabContent])
+  );
 
   const onRefresh = () => {
     setIsRefreshing(true);
