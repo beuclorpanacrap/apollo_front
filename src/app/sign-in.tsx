@@ -49,81 +49,86 @@ export default function SignInScreen() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-      <View style={styles.logo}>
-        <AppMark size={64} />
-      </View>
-
-      <Text style={styles.title}>Your health records,</Text>
-      <Text style={styles.titleAccent}>securely in one place.</Text>
-      <Text style={styles.subtitle}>
-        Apollo keeps your medical information organized, private, and accessible whenever you need it.
-      </Text>
-
-      {errorMessage && (
-        <View style={styles.errorContainer}>
-          <Ionicons name="alert-circle" size={18} color={theme.danger} />
-          <Text style={styles.errorText}>{errorMessage}</Text>
+    <View style={styles.screen}>
+      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+        <View style={styles.logo}>
+          <AppMark size={64} />
         </View>
-      )}
 
-      <Text style={styles.label}>Email address</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="you@example.com"
-        placeholderTextColor={theme.textTertiary}
-        value={email}
-        onChangeText={setEmail}
-        autoCapitalize="none"
-        keyboardType="email-address"
-        editable={!isSubmitting}
-      />
+        <Text style={styles.title}>Your health records,</Text>
+        <Text style={styles.titleAccent}>securely in one place.</Text>
+        <Text style={styles.subtitle}>
+          Apollo keeps your medical information organized, private, and accessible whenever you need it.
+        </Text>
 
-      <Text style={styles.label}>Password</Text>
-      <View style={styles.passwordRow}>
+        {errorMessage && (
+          <View style={styles.errorContainer}>
+            <Ionicons name="alert-circle" size={18} color={theme.danger} />
+            <Text style={styles.errorText}>{errorMessage}</Text>
+          </View>
+        )}
+
+        <Text style={styles.label}>Email address</Text>
         <TextInput
-          style={styles.passwordInput}
-          placeholder="••••••••"
+          style={styles.input}
+          placeholder="you@example.com"
           placeholderTextColor={theme.textTertiary}
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry={!showPassword}
+          value={email}
+          onChangeText={setEmail}
+          autoCapitalize="none"
+          keyboardType="email-address"
           editable={!isSubmitting}
         />
-        <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-          <Ionicons name={showPassword ? 'eye' : 'eye-off'} size={20} color={theme.textTertiary} />
+
+        <Text style={styles.label}>Password</Text>
+        <View style={styles.passwordRow}>
+          <TextInput
+            style={styles.passwordInput}
+            placeholder="••••••••"
+            placeholderTextColor={theme.textTertiary}
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry={!showPassword}
+            editable={!isSubmitting}
+          />
+          <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+            <Ionicons name={showPassword ? 'eye' : 'eye-off'} size={20} color={theme.textTertiary} />
+          </TouchableOpacity>
+        </View>
+
+        <TouchableOpacity
+          style={[styles.signInButton, isSubmitting && styles.signInButtonDisabled]}
+          onPress={handleSignIn}
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.signInText}>Sign In</Text>
+          )}
         </TouchableOpacity>
-      </View>
 
-      <TouchableOpacity
-        style={[styles.signInButton, isSubmitting && styles.signInButtonDisabled]}
-        onPress={handleSignIn}
-        disabled={isSubmitting}
-      >
-        {isSubmitting ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.signInText}>Sign In</Text>
-        )}
-      </TouchableOpacity>
-
-      <Text style={styles.footer}>
-        Don't have an account?{' '}
-        <Text style={styles.link} onPress={() => router.push('/sign-up')}>
-          Sign Up
+        <Text style={styles.footer}>
+          Don't have an account?{' '}
+          <Text style={styles.link} onPress={() => router.push('/sign-up')}>
+            Sign Up
+          </Text>
         </Text>
-      </Text>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: theme.background,
+  },
   container: {
     flexGrow: 1,
     paddingHorizontal: 24,
     paddingTop: 40,
     paddingBottom: 40,
-    backgroundColor: theme.background,
     maxWidth: 500,
     alignSelf: 'center',
     width: '100%',
