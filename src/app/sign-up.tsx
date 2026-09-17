@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import {
+  KeyboardAvoidingView,
   Platform,
   View,
   Text,
@@ -82,7 +83,16 @@ export default function SignUpScreen() {
 
   return (
     <View style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+      <KeyboardAvoidingView
+        style={styles.keyboardAvoidingView}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
+      >
+        <ScrollView
+          contentContainerStyle={styles.container}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+        >
         <View style={styles.logo}>
           <AppMark size={64} />
         </View>
@@ -234,7 +244,8 @@ export default function SignUpScreen() {
             Sign In
           </Text>
         </Text>
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }
@@ -243,6 +254,9 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: theme.background,
+  },
+  keyboardAvoidingView: {
+    flex: 1,
   },
   container: {
     flexGrow: 1,
