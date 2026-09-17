@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import {
+  Platform,
   View,
   Text,
   TextInput,
@@ -9,6 +10,7 @@ import {
   ActivityIndicator,
   Image,
 } from 'react-native';
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/context/auth-context';
@@ -27,9 +29,23 @@ export default function SignUpScreen() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState('');
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [role, setRole] = useState<'patient' | 'doctor'>('patient');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const handleDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
+    if (Platform.OS === 'android') {
+      setShowDatePicker(false);
+    }
+
+    if (event.type === 'set' && selectedDate) {
+      const year = selectedDate.getFullYear();
+      const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+      const day = String(selectedDate.getDate()).padStart(2, '0');
+      setDateOfBirth(`${year}-${month}-${day}`);
+    }
+  };
 
   const handleSignUp = async () => {
     setErrorMessage(null);
@@ -138,14 +154,40 @@ export default function SignUpScreen() {
         </View>
 
         <Text style={styles.label}>Date of birth *</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="YYYY-MM-DD (e.g. 1990-05-15)"
-          value={dateOfBirth}
-          onChangeText={setDateOfBirth}
-          keyboardType="numbers-and-punctuation"
-          editable={!isSubmitting}
-        />
+        {Platform.OS === 'web' ? (
+          <TextInput
+            style={styles.input}
+            placeholder="YYYY-MM-DD (e.g. 1990-05-15)"
+            value={dateOfBirth}
+            onChangeText={setDateOfBirth}
+            keyboardType="numbers-and-punctuation"
+            editable={!isSubmitting}
+          />
+        ) : (
+          <>
+            <TouchableOpacity
+              style={[styles.input, styles.dateInput]}
+              onPress={() => setShowDatePicker(true)}
+              disabled={isSubmitting}
+              accessibilityRole="button"
+              accessibilityLabel="Select date of birth"
+            >
+              <Text style={dateOfBirth ? styles.dateText : styles.datePlaceholder}>
+                {dateOfBirth || 'Select date of birth'}
+              </Text>
+              <Ionicons name="calendar-outline" size={20} color={theme.textTertiary} />
+            </TouchableOpacity>
+            {showDatePicker && (
+              <DateTimePicker
+                value={dateOfBirth ? new Date(`${dateOfBirth}T12:00:00`) : new Date(2000, 0, 1)}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                maximumDate={new Date()}
+                onChange={handleDateChange}
+              />
+            )}
+          </>
+        )}
 
         <Text style={styles.label}>Email address *</Text>
         <TextInput
@@ -276,6 +318,12 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.sans.regular,
     marginBottom: 16,
     color: theme.text,
+  },
+  dateText: { fontSize: 14, fontFamily: Fonts.sans.regular, color: theme.text, flex: 1 },
+  datePlaceholder: { fontSize: 14, fontFamily: Fonts.sans.regular, color: theme.textTertiary, flex: 1 },
+  dateInput: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   passwordRow: {
     flexDirection: 'row',
