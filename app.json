@@ -36,7 +36,27 @@
         }
       ],
       "expo-secure-store",
-      "@react-native-community/datetimepicker"
+      [
+        "@react-native-community/datetimepicker",
+        {
+          "android": {
+            "datePicker": {
+              "colorAccent": {
+                "light": "#4FAE72",
+                "dark": "#4FAE72"
+              },
+              "textColorPrimary": {
+                "light": "#2E5C40",
+                "dark": "#FBF6E8"
+              },
+              "windowBackground": {
+                "light": "#FBF6E8",
+                "dark": "#1E3C2A"
+              }
+            }
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
