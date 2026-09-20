@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -16,10 +16,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/context/auth-context';
-import { useTheme, useThemeContext } from '@/hooks/use-theme';
+import { useThemeContext } from '@/hooks/use-theme';
 import { ThemeMode } from '@/context/theme-context';
 import { ThemedDatePicker } from '@/components/themed-date-picker';
 import { vaultApi } from '@/api/vault.api';
+import { AppTheme } from '@/constants/theme';
 
 interface PolicyModalContent {
   title: string;
@@ -30,8 +31,24 @@ interface PolicyModalContent {
 export default function SettingsScreen() {
   const router = useRouter();
   const { user, logout, refreshUser, updateUserLocally } = useAuth();
-  const theme = useTheme();
-  const { themeMode, setThemeMode } = useThemeContext();
+  const { theme, themeMode, setThemeMode, isDark } = useThemeContext();
+  const styles = useMemo(() => createStyles(theme, isDark), [theme, isDark]);
+  const badgeIconColor = isDark ? '#34D399' : '#246B44';
+
+  const parseIsoDate = (iso?: string | null): Date | null => {
+    if (!iso) return null;
+    const parts = iso.split('-');
+    if (parts.length === 3) {
+      const y = parseInt(parts[0], 10);
+      const m = parseInt(parts[1], 10) - 1;
+      const d = parseInt(parts[2], 10);
+      if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
+        return new Date(y, m, d);
+      }
+    }
+    const d = new Date(iso);
+    return isNaN(d.getTime()) ? null : d;
+  };
 
   // Preferences State
   const [biometricsEnabled, setBiometricsEnabled] = useState<boolean>(false);
@@ -254,8 +271,8 @@ export default function SettingsScreen() {
               onPress={openNameModal}
               activeOpacity={0.7}
             >
-              <View style={[styles.iconBadge, { backgroundColor: theme.pillGreenBg }]}>
-                <Ionicons name="person-outline" size={18} color={theme.tint} />
+              <View style={styles.iconBadge}>
+                <Ionicons name="person-outline" size={20} color={badgeIconColor} />
               </View>
               <View style={styles.rowContent}>
                 <Text style={[styles.rowLabel, { color: theme.textSecondary }]}>Full Name</Text>
@@ -274,8 +291,8 @@ export default function SettingsScreen() {
               onPress={openEmailModal}
               activeOpacity={0.7}
             >
-              <View style={[styles.iconBadge, { backgroundColor: theme.pillPeachBg }]}>
-                <Ionicons name="mail-outline" size={18} color={theme.pillPeachText} />
+              <View style={styles.iconBadge}>
+                <Ionicons name="mail-outline" size={20} color={badgeIconColor} />
               </View>
               <View style={styles.rowContent}>
                 <Text style={[styles.rowLabel, { color: theme.textSecondary }]}>Email Address</Text>
@@ -294,8 +311,8 @@ export default function SettingsScreen() {
               onPress={() => setShowDatePicker(true)}
               activeOpacity={0.7}
             >
-              <View style={[styles.iconBadge, { backgroundColor: theme.surfaceMuted }]}>
-                <Ionicons name="calendar-outline" size={18} color={theme.tintStrong} />
+              <View style={styles.iconBadge}>
+                <Ionicons name="calendar-outline" size={20} color={badgeIconColor} />
               </View>
               <View style={styles.rowContent}>
                 <Text style={[styles.rowLabel, { color: theme.textSecondary }]}>Date of Birth</Text>
@@ -325,8 +342,8 @@ export default function SettingsScreen() {
               onPress={() => router.push('/onboarding')}
               activeOpacity={0.7}
             >
-              <View style={[styles.iconBadge, { backgroundColor: theme.pillGreenBg }]}>
-                <Ionicons name="medkit-outline" size={18} color={theme.tint} />
+              <View style={styles.iconBadge}>
+                <Ionicons name="medkit-outline" size={20} color={badgeIconColor} />
               </View>
               <View style={styles.rowContent}>
                 <Text style={[styles.actionTitle, { color: theme.text }]}>
@@ -346,8 +363,8 @@ export default function SettingsScreen() {
               onPress={handleExport}
               activeOpacity={0.7}
             >
-              <View style={[styles.iconBadge, { backgroundColor: theme.surfaceMuted }]}>
-                <Ionicons name="download-outline" size={18} color={theme.tint} />
+              <View style={styles.iconBadge}>
+                <Ionicons name="download-outline" size={20} color={badgeIconColor} />
               </View>
               <View style={styles.rowContent}>
                 <Text style={[styles.actionTitle, { color: theme.text }]}>Export Health Summary</Text>
@@ -373,8 +390,8 @@ export default function SettingsScreen() {
             ]}
           >
             <View style={styles.row}>
-              <View style={[styles.iconBadge, { backgroundColor: theme.surfaceMuted }]}>
-                <Ionicons name="color-palette-outline" size={18} color={theme.tint} />
+              <View style={styles.iconBadge}>
+                <Ionicons name="color-palette-outline" size={20} color={badgeIconColor} />
               </View>
               <View style={styles.rowContent}>
                 <Text style={[styles.actionTitle, { color: theme.text }]}>Theme</Text>
@@ -420,8 +437,8 @@ export default function SettingsScreen() {
             <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
             <View style={styles.row}>
-              <View style={[styles.iconBadge, { backgroundColor: theme.pillGreenBg }]}>
-                <Ionicons name="finger-print-outline" size={18} color={theme.tint} />
+              <View style={styles.iconBadge}>
+                <Ionicons name="finger-print-outline" size={20} color={badgeIconColor} />
               </View>
               <View style={styles.rowContent}>
                 <Text style={[styles.actionTitle, { color: theme.text }]}>Biometric Lock</Text>
@@ -456,8 +473,8 @@ export default function SettingsScreen() {
               onPress={openPrivacyPolicy}
               activeOpacity={0.7}
             >
-              <View style={[styles.iconBadge, { backgroundColor: theme.pillGreenBg }]}>
-                <Ionicons name="shield-checkmark-outline" size={18} color={theme.tint} />
+              <View style={styles.iconBadge}>
+                <Ionicons name="shield-checkmark-outline" size={20} color={badgeIconColor} />
               </View>
               <View style={styles.rowContent}>
                 <Text style={[styles.actionTitle, { color: theme.text }]}>Privacy Policy</Text>
@@ -475,8 +492,8 @@ export default function SettingsScreen() {
               onPress={openTermsOfService}
               activeOpacity={0.7}
             >
-              <View style={[styles.iconBadge, { backgroundColor: theme.surfaceMuted }]}>
-                <Ionicons name="document-text-outline" size={18} color={theme.tintStrong} />
+              <View style={styles.iconBadge}>
+                <Ionicons name="document-text-outline" size={20} color={badgeIconColor} />
               </View>
               <View style={styles.rowContent}>
                 <Text style={[styles.actionTitle, { color: theme.text }]}>Terms of Service</Text>
@@ -504,8 +521,8 @@ export default function SettingsScreen() {
               onPress={() => setShowLogoutModal(true)}
               activeOpacity={0.7}
             >
-              <View style={[styles.iconBadge, { backgroundColor: theme.dangerBg }]}>
-                <Ionicons name="log-out-outline" size={18} color={theme.danger} />
+              <View style={[styles.iconBadge, { backgroundColor: isDark ? 'rgba(248, 113, 113, 0.15)' : 'rgba(211, 47, 47, 0.10)' }]}>
+                <Ionicons name="log-out-outline" size={20} color={theme.danger} />
               </View>
               <View style={styles.rowContent}>
                 <Text style={[styles.actionTitle, { color: theme.danger }]}>Log Out</Text>
@@ -528,8 +545,8 @@ export default function SettingsScreen() {
       >
         <View style={styles.modalOverlay}>
           <View style={[styles.dialogCard, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
-            <View style={[styles.dialogIconWrapper, { backgroundColor: theme.pillGreenBg }]}>
-              <Ionicons name="person-outline" size={24} color={theme.tint} />
+            <View style={styles.dialogIconWrapper}>
+              <Ionicons name="person-outline" size={24} color={badgeIconColor} />
             </View>
             <Text style={[styles.dialogTitle, { color: theme.text }]}>Edit Full Name</Text>
             <Text style={[styles.dialogMessage, { color: theme.textSecondary }]}>
@@ -612,8 +629,8 @@ export default function SettingsScreen() {
       >
         <View style={styles.modalOverlay}>
           <View style={[styles.dialogCard, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
-            <View style={[styles.dialogIconWrapper, { backgroundColor: theme.pillPeachBg }]}>
-              <Ionicons name="mail-outline" size={24} color={theme.pillPeachText} />
+            <View style={styles.dialogIconWrapper}>
+              <Ionicons name="mail-outline" size={24} color={badgeIconColor} />
             </View>
             <Text style={[styles.dialogTitle, { color: theme.text }]}>Edit Email Address</Text>
             <Text style={[styles.dialogMessage, { color: theme.textSecondary }]}>
@@ -773,11 +790,21 @@ export default function SettingsScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Date of Birth Picker Modal */}
+      <ThemedDatePicker
+        visible={showDatePicker}
+        value={parseIsoDate(user?.dateOfBirth)}
+        onClose={() => setShowDatePicker(false)}
+        onChange={handleDateSelect}
+        maximumDate={new Date()}
+      />
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme, isDark: boolean) =>
+  StyleSheet.create({
   safeArea: {
     flex: 1,
   },
@@ -859,11 +886,12 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   iconBadge: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: isDark ? 'rgba(52, 211, 153, 0.12)' : 'rgba(36, 107, 68, 0.10)',
   },
   rowContent: {
     flex: 1,
@@ -945,9 +973,10 @@ const styles = StyleSheet.create({
   dialogIconWrapper: {
     width: 52,
     height: 52,
-    borderRadius: 26,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: isDark ? 'rgba(52, 211, 153, 0.12)' : 'rgba(36, 107, 68, 0.10)',
     marginBottom: 16,
   },
   dialogTitle: {

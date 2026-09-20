@@ -16,11 +16,11 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useAuth } from '@/context/auth-context';
 import { vaultApi, HealthConditionResponse } from '@/api/vault.api';
 import { AppTheme, Colors, Fonts } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+import { useThemeContext } from '@/hooks/use-theme';
 
 export default function HomeScreen() {
-  const theme = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { theme, isDark } = useThemeContext();
+  const styles = useMemo(() => createStyles(theme, isDark), [theme, isDark]);
   const router = useRouter();
   const { user, logout, refreshUser, isAuthenticated } = useAuth();
 
@@ -102,7 +102,7 @@ export default function HomeScreen() {
             onPress={() => router.push('/settings')}
             activeOpacity={0.7}
           >
-            <Ionicons name="settings-outline" size={20} color={theme.onTint} />
+            <Ionicons name="settings-outline" size={20} color={isDark ? theme.text : '#FFFDF7'} />
           </TouchableOpacity>
         </View>
 
@@ -242,7 +242,7 @@ export default function HomeScreen() {
   );
 }
 
-const createStyles = (theme: AppTheme) =>
+const createStyles = (theme: AppTheme, isDark: boolean) =>
   StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: theme.background },
   container: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 32, maxWidth: 600, alignSelf: 'center', width: '100%' },
@@ -250,15 +250,33 @@ const createStyles = (theme: AppTheme) =>
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: theme.tintStrong,
+    backgroundColor: isDark ? theme.backgroundElement : theme.tintStrong,
     borderRadius: 20,
     paddingHorizontal: 20,
     paddingVertical: 20,
     marginBottom: 18,
+    borderWidth: isDark ? 1 : 0,
+    borderColor: isDark ? theme.border : 'transparent',
   },
-  welcomeSubtitle: { fontSize: 13, fontFamily: Fonts.sans.medium, color: 'rgba(255, 253, 247, 0.8)' },
-  patientName: { fontSize: 24, fontFamily: Fonts.display, fontWeight: '800', color: '#FFFDF7', marginTop: 2 },
-  settingsButton: { padding: 8, borderRadius: 10, backgroundColor: 'rgba(255, 255, 255, 0.16)' },
+  welcomeSubtitle: {
+    fontSize: 13,
+    fontFamily: Fonts.sans.medium,
+    color: isDark ? '#9CA3AF' : 'rgba(255, 253, 247, 0.8)',
+  },
+  patientName: {
+    fontSize: 24,
+    fontFamily: Fonts.display,
+    fontWeight: '800',
+    color: isDark ? '#F9FAFB' : '#FFFDF7',
+    marginTop: 2,
+  },
+  settingsButton: {
+    padding: 8,
+    borderRadius: 10,
+    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.16)',
+    borderWidth: isDark ? 1 : 0,
+    borderColor: isDark ? theme.border : 'transparent',
+  },
   identityCard: {
     backgroundColor: theme.backgroundElement,
     borderRadius: 16,
@@ -300,9 +318,9 @@ const createStyles = (theme: AppTheme) =>
   biometricLabel: { fontSize: 12, fontFamily: Fonts.sans.medium, color: theme.textSecondary, fontWeight: '500' },
   biometricValue: { fontSize: 13, fontFamily: Fonts.sans.bold, color: theme.text, fontWeight: '700' },
   incompleteBanner: {
-    backgroundColor: theme.pillGreenBg,
+    backgroundColor: isDark ? 'rgba(52, 211, 153, 0.10)' : theme.pillGreenBg,
     borderWidth: 1.5,
-    borderColor: theme.tint,
+    borderColor: isDark ? theme.tint : theme.tint,
     borderRadius: 14,
     padding: 16,
     marginBottom: 16,
@@ -332,15 +350,15 @@ const createStyles = (theme: AppTheme) =>
   },
   bannerContent: { flex: 1 },
   bannerTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
-  bannerTitle: { fontSize: 15, fontFamily: Fonts.sans.bold, fontWeight: '700', color: theme.tintStrong, flex: 1 },
-  bannerSubtitle: { fontSize: 13, fontFamily: Fonts.sans.regular, color: theme.pillGreenText, lineHeight: 18, marginBottom: 8 },
-  bannerActionText: { fontSize: 13, fontFamily: Fonts.sans.bold, fontWeight: '700', color: theme.tintStrong, alignSelf: 'flex-start' },
+  bannerTitle: { fontSize: 15, fontFamily: Fonts.sans.bold, fontWeight: '700', color: isDark ? theme.tint : theme.tintStrong, flex: 1 },
+  bannerSubtitle: { fontSize: 13, fontFamily: Fonts.sans.regular, color: isDark ? '#9CA3AF' : theme.pillGreenText, lineHeight: 18, marginBottom: 8 },
+  bannerActionText: { fontSize: 13, fontFamily: Fonts.sans.bold, fontWeight: '700', color: theme.tint, alignSelf: 'flex-start' },
   consultationCta: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: theme.tintStrong,
+    backgroundColor: isDark ? theme.tint : theme.tintStrong,
     borderRadius: 10,
     paddingVertical: 12,
     marginTop: 14,
