@@ -34,7 +34,6 @@ export default function HomeScreen() {
   const [conditions, setConditions] = useState<HealthConditionResponse[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
-  const [showLogoutDialog, setShowLogoutDialog] = useState<boolean>(false);
 
   const loadData = async () => {
     if (!isAuthenticated) {
@@ -83,12 +82,6 @@ export default function HomeScreen() {
     }
   };
 
-  const handleConfirmLogout = async () => {
-    setShowLogoutDialog(false);
-    await logout();
-    router.replace('/welcome');
-  };
-
   const isBaselineIncomplete = !user?.gender;
 
   return (
@@ -104,11 +97,11 @@ export default function HomeScreen() {
             <Text style={styles.patientName}>{user?.fullName || 'Patient'}</Text>
           </View>
           <TouchableOpacity
-            style={styles.logoutButton}
-            onPress={() => setShowLogoutDialog(true)}
+            style={styles.settingsButton}
+            onPress={() => router.push('/settings')}
             activeOpacity={0.7}
           >
-            <Ionicons name="log-out" size={20} color={theme.onTint} />
+            <Ionicons name="settings-outline" size={20} color={theme.onTint} />
           </TouchableOpacity>
         </View>
 
@@ -244,41 +237,6 @@ export default function HomeScreen() {
         </View>
       </ScrollView>
 
-      {/* Logout Confirmation Dialog */}
-      <Modal
-        visible={showLogoutDialog}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowLogoutDialog(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.dialogCard}>
-            <View style={styles.dialogIconWrapper}>
-              <Ionicons name="log-out" size={28} color={theme.tintStrong} />
-            </View>
-            <Text style={styles.dialogTitle}>Log Out</Text>
-            <Text style={styles.dialogMessage}>
-              Are you sure you want to end your current session?
-            </Text>
-            <View style={styles.dialogActions}>
-              <TouchableOpacity
-                style={styles.cancelBtn}
-                onPress={() => setShowLogoutDialog(false)}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.cancelBtnText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.logoutBtn}
-                onPress={handleConfirmLogout}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.logoutBtnText}>Log Out</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 }
@@ -298,7 +256,7 @@ const styles = StyleSheet.create({
   },
   welcomeSubtitle: { fontSize: 13, fontFamily: Fonts.sans.medium, color: 'rgba(255, 253, 247, 0.8)' },
   patientName: { fontSize: 24, fontFamily: Fonts.display, fontWeight: '800', color: '#FFFDF7', marginTop: 2 },
-  logoutButton: { padding: 8, borderRadius: 10, backgroundColor: 'rgba(255, 255, 255, 0.16)' },
+  settingsButton: { padding: 8, borderRadius: 10, backgroundColor: 'rgba(255, 255, 255, 0.16)' },
   identityCard: {
     backgroundColor: theme.backgroundElement,
     borderRadius: 16,

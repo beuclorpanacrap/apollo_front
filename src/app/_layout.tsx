@@ -73,6 +73,7 @@ function RouteGuard() {
       <Stack.Screen name="welcome" />
       <Stack.Screen name="onboarding" />
       <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="settings" />
       <Stack.Screen name="sign-in" options={{ presentation: 'modal' }} />
       <Stack.Screen name="sign-up" options={{ presentation: 'modal' }} />
     </Stack>
