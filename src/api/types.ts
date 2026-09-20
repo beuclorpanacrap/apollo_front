@@ -1015,6 +1015,10 @@ export interface components {
         };
         /** @description Request body to update patient profile baseline attributes */
         UpdatePatientProfileRequest: {
+            firstName?: string;
+            lastName?: string;
+            dateOfBirth?: string;
+            email?: string;
             /**
              * @description Gender identity (e.g. MALE, FEMALE, OTHER, PREFER_NOT_TO_SAY)
              * @example FEMALE

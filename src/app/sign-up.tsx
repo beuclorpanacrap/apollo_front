@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -16,11 +16,12 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '@/context/auth-context';
 import { AppMark } from '@/components/app-mark';
 import { ThemedDatePicker } from '@/components/themed-date-picker';
-import { Colors, Fonts } from '@/constants/theme';
-
-const theme = Colors.light;
+import { AppTheme, Colors, Fonts } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 
 export default function SignUpScreen() {
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const router = useRouter();
   const { registerPatient } = useAuth();
 
@@ -229,7 +230,8 @@ export default function SignUpScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) =>
+  StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: theme.background,

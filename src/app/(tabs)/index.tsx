@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -15,11 +15,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useAuth } from '@/context/auth-context';
 import { vaultApi, HealthConditionResponse } from '@/api/vault.api';
-import { Colors, Fonts } from '@/constants/theme';
-
-const theme = Colors.light;
+import { AppTheme, Colors, Fonts } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 
 export default function HomeScreen() {
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const router = useRouter();
   const { user, logout, refreshUser, isAuthenticated } = useAuth();
 
@@ -241,7 +242,8 @@ export default function HomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) =>
+  StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: theme.background },
   container: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 32, maxWidth: 600, alignSelf: 'center', width: '100%' },
   headerRow: {

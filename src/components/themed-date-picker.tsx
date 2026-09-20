@@ -1,9 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Modal, View, Text, TouchableOpacity, StyleSheet, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Fonts } from '@/constants/theme';
-
-const theme = Colors.light;
+import { AppTheme, Colors, Fonts } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 
 const WEEKDAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 const MONTH_LABELS = [
@@ -63,6 +62,8 @@ export function ThemedDatePicker({
   maximumDate,
   minimumDate,
 }: ThemedDatePickerProps) {
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const [cursor, setCursor] = useState(() => {
     const base = value ?? new Date(2000, 0, 1);
     return { year: base.getFullYear(), month: base.getMonth() };
@@ -158,7 +159,8 @@ export function ThemedDatePicker({
 
 const CELL_SIZE = 40;
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) =>
+  StyleSheet.create({
   backdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.4)',

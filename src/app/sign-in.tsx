@@ -1,9 +1,10 @@
 import { AppMark } from "@/components/app-mark";
-import { Colors, Fonts } from "@/constants/theme";
+import { AppTheme, Colors, Fonts } from "@/constants/theme";
 import { useAuth } from "@/context/auth-context";
+import { useTheme } from "@/hooks/use-theme";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -16,9 +17,9 @@ import {
   View,
 } from "react-native";
 
-const theme = Colors.light;
-
 export default function SignInScreen() {
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const router = useRouter();
   const { login } = useAuth();
 
@@ -139,7 +140,8 @@ export default function SignInScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) =>
+  StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: theme.background,

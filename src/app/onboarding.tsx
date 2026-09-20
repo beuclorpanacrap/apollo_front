@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -14,9 +14,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/context/auth-context';
 import { vaultApi, BaselineConditionItem } from '@/api/vault.api';
-import { Colors, Fonts } from '@/constants/theme';
-
-const theme = Colors.light;
+import { Colors, Fonts, AppTheme } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 
 type GenderOption = 'MALE' | 'FEMALE' | 'OTHER' | 'PREFER_NOT_TO_SAY';
 
@@ -36,6 +35,9 @@ const BLOOD_TYPE_OPTIONS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'U
 export default function OnboardingScreen() {
   const router = useRouter();
   const { user, refreshUser } = useAuth();
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+  const hasExistingBaseline = !!user?.gender;
 
   // Biometrics State
   const [selectedGender, setSelectedGender] = useState<GenderOption | null>(null);
@@ -263,21 +265,39 @@ export default function OnboardingScreen() {
         contentContainerStyle={styles.scrollContainer}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Top Header Row with Skip */}
+        {/* Top Header Row */}
         <View style={styles.topHeader}>
           <View style={styles.titleWrapper}>
-            <Text style={styles.mainTitle}>Welcome to Apollo</Text>
-            <Text style={styles.subtitle}>Set up your clinical baseline</Text>
+            <Text style={styles.mainTitle}>
+              {hasExistingBaseline ? 'Update your clinical baseline' : 'Set up your clinical baseline'}
+            </Text>
+            <Text style={styles.subtitle}>
+              {hasExistingBaseline
+                ? 'Refine your physiological markers, allergies, and lifestyle factors'
+                : 'Essential health markers to give your care team accurate clinical context'}
+            </Text>
           </View>
-          <TouchableOpacity
-            style={styles.skipButton}
-            onPress={handleSkip}
-            disabled={isSubmitting}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.skipText}>Skip for now</Text>
-            <Ionicons name="arrow-forward" size={15} color={theme.tintStrong} />
-          </TouchableOpacity>
+          {hasExistingBaseline ? (
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)'))}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Go back"
+            >
+              <Ionicons name="arrow-back-outline" size={20} color={theme.text} />
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={styles.skipButton}
+              onPress={handleSkip}
+              disabled={isSubmitting}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.skipText}>Skip for now</Text>
+              <Ionicons name="arrow-forward" size={15} color={theme.tintStrong} />
+            </TouchableOpacity>
+          )}
         </View>
 
         {errorMessage && (
@@ -324,7 +344,7 @@ export default function OnboardingScreen() {
           {/* Height & Weight Inputs */}
           <View style={styles.measurementsRow}>
             <View style={styles.measureCol}>
-              <Text style={styles.fieldLabel}>Height</Text>
+              <Text style={styles.fieldLabel}>Height (cm)</Text>
               <View style={styles.inputWithBadge}>
                 <TextInput
                   style={styles.numericInput}
@@ -342,7 +362,7 @@ export default function OnboardingScreen() {
             </View>
 
             <View style={styles.measureCol}>
-              <Text style={styles.fieldLabel}>Weight</Text>
+              <Text style={styles.fieldLabel}>Weight (kg)</Text>
               <View style={styles.inputWithBadge}>
                 <TextInput
                   style={styles.numericInput}
@@ -589,28 +609,40 @@ export default function OnboardingScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: theme.background,
-  },
-  scrollContainer: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 40,
-    maxWidth: 540,
-    alignSelf: 'center',
-    width: '100%',
-  },
-  topHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 20,
-  },
-  titleWrapper: {
-    flex: 1,
-  },
+const createStyles = (theme: AppTheme) =>
+  StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: theme.background,
+    },
+    scrollContainer: {
+      paddingHorizontal: 20,
+      paddingTop: 16,
+      paddingBottom: 40,
+      maxWidth: 540,
+      alignSelf: 'center',
+      width: '100%',
+    },
+    topHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 20,
+    },
+    titleWrapper: {
+      flex: 1,
+      paddingRight: 12,
+    },
+    backButton: {
+      width: 38,
+      height: 38,
+      borderRadius: 19,
+      backgroundColor: theme.surfaceMuted,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
   mainTitle: {
     fontSize: 24,
     fontFamily: Fonts.sans.extraBold,

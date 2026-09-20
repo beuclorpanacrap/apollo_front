@@ -11,6 +11,7 @@ interface AuthContextType {
   registerPatient: (request: RegisterPatientRequest) => Promise<CurrentUserResponse>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  updateUserLocally: (partial: Partial<CurrentUserResponse>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -75,6 +76,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const updateUserLocally = (partial: Partial<CurrentUserResponse>) => {
+    setUser((prev) => (prev ? { ...prev, ...partial } : null));
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -86,6 +91,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         registerPatient,
         logout,
         refreshUser,
+        updateUserLocally,
       }}
     >
       {children}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -11,9 +11,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { Colors, Fonts } from '@/constants/theme';
-
-const theme = Colors.light;
+import { AppTheme, Colors, Fonts } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 
 interface FaqItem {
   id: string;
@@ -49,6 +48,8 @@ const FAQS: FaqItem[] = [
 ];
 
 export default function DocumentationScreen() {
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const router = useRouter();
   const [expandedFaq, setExpandedFaq] = useState<string | null>('1');
   const [ticketSubject, setTicketSubject] = useState('');
@@ -220,7 +221,8 @@ export default function DocumentationScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) =>
+  StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: theme.background },
   container: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 32, maxWidth: 640, alignSelf: 'center', width: '100%' },
   header: { marginBottom: 16 },

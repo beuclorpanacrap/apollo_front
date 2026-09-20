@@ -14,57 +14,82 @@ import '@/global.css';
 import { Platform } from 'react-native';
 
 const brand = {
-  cream: '#FBF6E8',
-  springGreen: '#4FAE72',
-  deepGreen: '#327A4C',
-  woodText: '#2E5C40',
+  cream: '#FBF8F1',
+  surfaceCard: '#FFFFFF',
+  forestGreen: '#2D7A4F',
+  headerGreen: '#246B44',
+  darkCharcoal: '#1B2A20',
+  mutedSecondary: '#6B7280',
   peachPill: '#FBEADB',
+  springGreen: '#2D7A4F',
+  deepGreen: '#246B44',
+  woodText: '#1B2A20',
 } as const;
 
 export const BrandColors = brand;
 
-export const Colors = {
+export interface AppTheme {
+  text: string;
+  textSecondary: string;
+  textTertiary: string;
+  background: string;
+  backgroundElement: string;
+  backgroundSelected: string;
+  surfaceMuted: string;
+  border: string;
+  tint: string;
+  tintStrong: string;
+  onTint: string;
+  pillGreenBg: string;
+  pillGreenText: string;
+  pillPeachBg: string;
+  pillPeachText: string;
+  danger: string;
+  dangerBg: string;
+}
+
+export const Colors: { light: AppTheme; dark: AppTheme } = {
   light: {
-    text: brand.woodText,
-    textSecondary: '#67876F',
-    textTertiary: '#90A691',
-    background: brand.cream,
-    backgroundElement: '#FFFDF7',
+    text: brand.darkCharcoal,
+    textSecondary: brand.mutedSecondary,
+    textTertiary: '#9CA3AF',
+    background: '#FBF8F1',
+    backgroundElement: '#FFFFFF',
     backgroundSelected: '#DCEFE3',
-    surfaceMuted: '#EDEBDC',
-    border: '#DADDCD',
-    tint: brand.springGreen,
-    tintStrong: brand.deepGreen,
+    surfaceMuted: '#F7F4EC',
+    border: '#EBE6DD',
+    tint: '#2D7A4F',
+    tintStrong: '#246B44',
     onTint: '#FFFFFF',
-    pillGreenBg: '#DCEFE3',
-    pillGreenText: brand.woodText,
+    pillGreenBg: '#EAF7EF',
+    pillGreenText: '#246B44',
     pillPeachBg: brand.peachPill,
     pillPeachText: '#8B5A2E',
     danger: '#D32F2F',
     dangerBg: '#FFEBEE',
   },
   dark: {
-    text: brand.cream,
-    textSecondary: '#B3C0AD',
-    textTertiary: '#8CA286',
-    background: '#1E3C2A',
-    backgroundElement: '#264B34',
-    backgroundSelected: '#2F5C3F',
-    surfaceMuted: '#24462F',
-    border: '#35573F',
-    tint: brand.springGreen,
-    tintStrong: '#3F9963',
-    onTint: '#0F2417',
-    pillGreenBg: '#2F5C3F',
-    pillGreenText: '#DCEFE3',
-    pillPeachBg: '#4A3524',
-    pillPeachText: '#F0C99A',
-    danger: '#E57373',
-    dangerBg: '#4A2020',
+    text: '#F3F4F6',
+    textSecondary: '#9CA3AF',
+    textTertiary: '#64748B',
+    background: '#111817',
+    backgroundElement: '#1A2421',
+    backgroundSelected: '#273732',
+    surfaceMuted: '#0F1715',
+    border: '#273732',
+    tint: '#34D399',
+    tintStrong: '#4ADE80',
+    onTint: '#0F1715',
+    pillGreenBg: '#273732',
+    pillGreenText: '#34D399',
+    pillPeachBg: '#3E2D1E',
+    pillPeachText: '#FBBF24',
+    danger: '#F87171',
+    dangerBg: '#451A1A',
   },
-} as const;
+};
 
-export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
+export type ThemeColor = keyof AppTheme;
 
 /**
  * Two type families, used deliberately:

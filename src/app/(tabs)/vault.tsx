@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -19,13 +19,14 @@ import {
   LabTestResultResponse,
   HealthConditionResponse,
 } from '@/api/vault.api';
-import { Colors, Fonts } from '@/constants/theme';
-
-const theme = Colors.light;
+import { AppTheme, Colors, Fonts } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 
 type VaultTab = 'prescriptions' | 'test-results' | 'conditions';
 
 export default function VaultScreen() {
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const { isAuthenticated } = useAuth();
   const [activeTab, setActiveTab] = useState<VaultTab>('prescriptions');
   const [prescriptions, setPrescriptions] = useState<PrescriptionResponse[]>([]);
@@ -307,7 +308,8 @@ export default function VaultScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) =>
+  StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: theme.background },
   container: { flex: 1, paddingHorizontal: 20, paddingTop: 16, maxWidth: 640, alignSelf: 'center', width: '100%' },
   header: { marginBottom: 16 },

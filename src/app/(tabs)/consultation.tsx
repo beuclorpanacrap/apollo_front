@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -12,11 +12,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { vaultApi, AccessGrantResponse } from '@/api/vault.api';
 import { useAuth } from '@/context/auth-context';
-import { Colors, Fonts } from '@/constants/theme';
-
-const theme = Colors.light;
+import { AppTheme, Colors, Fonts } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 
 export default function ConsultationScreen() {
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const { user } = useAuth();
   const [grant, setGrant] = useState<AccessGrantResponse | null>(null);
   const [remainingSeconds, setRemainingSeconds] = useState<number>(0);
@@ -234,7 +235,8 @@ export default function ConsultationScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) =>
+  StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: theme.background },
   container: {
     paddingHorizontal: 20,

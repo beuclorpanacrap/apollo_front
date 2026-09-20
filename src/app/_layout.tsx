@@ -12,7 +12,6 @@ import {
   ActivityIndicator,
   Platform,
   StyleSheet,
-  useColorScheme,
   View,
 } from 'react-native';
 import { useFonts } from 'expo-font';
@@ -27,12 +26,14 @@ import { Poppins_800ExtraBold } from '@expo-google-fonts/poppins';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { AuthProvider, useAuth } from '@/context/auth-context';
+import { AppThemeProvider, useThemeContext } from '@/context/theme-context';
 import { Colors } from '@/constants/theme';
 
 SplashScreen.preventAutoHideAsync();
 
 function RouteGuard() {
   const { isAuthenticated, isLoading } = useAuth();
+  const { theme } = useThemeContext();
   const segments = useSegments();
   const router = useRouter();
 
@@ -62,14 +63,19 @@ function RouteGuard() {
 
   if (isLoading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={Colors.light.tint} />
+      <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
+        <ActivityIndicator size="large" color={theme.tint} />
       </View>
     );
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: theme.background },
+      }}
+    >
       <Stack.Screen name="welcome" />
       <Stack.Screen name="onboarding" />
       <Stack.Screen name="(tabs)" />
@@ -81,18 +87,47 @@ function RouteGuard() {
 }
 
 function WebFrameContainer({ children }: { children: React.ReactNode }) {
+  const { theme } = useThemeContext();
   if (Platform.OS === 'web') {
     return (
-      <View style={styles.webOuter}>
-        <View style={styles.webFrame}>{children}</View>
+      <View style={[styles.webOuter, { backgroundColor: theme.surfaceMuted }]}>
+        <View style={[styles.webFrame, { backgroundColor: theme.background, borderColor: theme.border }]}>
+          {children}
+        </View>
       </View>
     );
   }
   return <>{children}</>;
 }
 
+function ThemedNavigationRoot() {
+  const { theme, isDark } = useThemeContext();
+
+  const baseTheme = isDark ? DarkTheme : DefaultTheme;
+  const navigationTheme = {
+    ...baseTheme,
+    dark: isDark,
+    colors: {
+      ...baseTheme.colors,
+      primary: theme.tint,
+      background: theme.background,
+      card: theme.backgroundElement,
+      text: theme.text,
+      border: theme.border,
+    },
+  };
+
+  return (
+    <ThemeProvider value={navigationTheme}>
+      <AnimatedSplashOverlay />
+      <WebFrameContainer>
+        <RouteGuard />
+      </WebFrameContainer>
+    </ThemeProvider>
+  );
+}
+
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
     Inter_500Medium,
@@ -110,27 +145,22 @@ export default function RootLayout() {
   }
 
   return (
-    <AuthProvider>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <AnimatedSplashOverlay />
-        <WebFrameContainer>
-          <RouteGuard />
-        </WebFrameContainer>
-      </ThemeProvider>
-    </AuthProvider>
+    <AppThemeProvider>
+      <AuthProvider>
+        <ThemedNavigationRoot />
+      </AuthProvider>
+    </AppThemeProvider>
   );
 }
 
 const styles = StyleSheet.create({
   loadingContainer: {
     flex: 1,
-    backgroundColor: Colors.light.background,
     alignItems: 'center',
     justifyContent: 'center',
   },
   webOuter: {
     flex: 1,
-    backgroundColor: Colors.light.surfaceMuted,
     alignItems: 'center',
     justifyContent: 'center',
     width: '100%',
@@ -139,13 +169,12 @@ const styles = StyleSheet.create({
   webFrame: {
     flex: 1,
     width: '100%',
-    backgroundColor: Colors.light.backgroundElement,
     ...Platform.select({
       web: {
         boxShadow: '0 4px 16px rgba(50, 122, 76, 0.12)',
       },
       default: {
-        shadowColor: Colors.light.tintStrong,
+        shadowColor: '#246B44',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.12,
         shadowRadius: 16,
@@ -153,6 +182,5 @@ const styles = StyleSheet.create({
     }),
     borderLeftWidth: 1,
     borderRightWidth: 1,
-    borderColor: Colors.light.border,
   },
 });
