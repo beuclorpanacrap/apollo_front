@@ -19,7 +19,7 @@ export default function ConditionSearchScreen() {
   const [query, setQuery] = useState('');
 
   const allOfType = useMemo(
-    () => sortByDateDesc(conditions.filter((c) => c.type === type).map(conditionToDisplayEntry)),
+    () => sortByDateDesc(conditions.filter((c) => c.type === type).map((c) => conditionToDisplayEntry(c))),
     [conditions, type]
   );
 

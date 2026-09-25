@@ -59,6 +59,7 @@ function ConditionGroupSection({
   group,
   entries,
   paginated = false,
+  styles,
 }: {
   group: { type: string; label: string; color: string; pillBg: string; pillText: string };
   entries: VaultDisplayEntry[];
@@ -66,6 +67,7 @@ function ConditionGroupSection({
    *  "Other" bucket omits this and keeps its original preview + search
    *  behavior untouched. */
   paginated?: boolean;
+  styles: ReturnType<typeof createStyles>;
 }) {
   const router = useRouter();
   // Own page state per rendered section — since each group renders its own
@@ -415,6 +417,7 @@ export default function VaultScreen() {
                     group={group}
                     entries={conditionsByGroup.map.get(group.type) ?? []}
                     paginated
+                    styles={styles}
                   />
                 ))}
                 {conditionsByGroup.other.length > 0 ? (
@@ -427,6 +430,7 @@ export default function VaultScreen() {
                       pillText: theme.pillClayText,
                     }}
                     entries={conditionsByGroup.other}
+                    styles={styles}
                   />
                 ) : null}
               </>
