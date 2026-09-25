@@ -2,7 +2,7 @@
  * Apollo brand tokens.
  *
  * Core palette (do not add new raw hex elsewhere — extend this file instead):
- *   cream        #FBF6E8  – page background
+ *   cream        #FAF4E3  – page background
  *   spring green #4FAE72  – primary actions / active states
  *   deep green   #327A4C  – pressed / stronger accents / headers
  *   wood text    #2E5C40  – primary text
@@ -24,6 +24,14 @@ const brand = {
   springGreen: '#2D7A4F',
   deepGreen: '#246B44',
   woodText: '#1B2A20',
+  // Added for the vault redesign — warm, distinct from the green brand pair,
+  // used to tell entry *types* apart at a glance (prescriptions / labs /
+  // conditions). Keep new raw hex here, not inline in screens.
+  marigold: '#D99A3D', // Prescriptions
+  clay: '#C9714F', // Lab / test results
+  plum: '#CE4685', // Chronic condition — vivid, berry-leaning
+  coral: '#D9634A', // Allergy — vivid, red-leaning (caution)
+  honey: '#DDAC3D', // Lifestyle — vivid, yellow-leaning (upbeat)
 } as const;
 
 export const BrandColors = brand;
@@ -44,6 +52,16 @@ export interface AppTheme {
   pillGreenText: string;
   pillPeachBg: string;
   pillPeachText: string;
+  pillMarigoldBg: string;
+  pillMarigoldText: string;
+  pillClayBg: string;
+  pillClayText: string;
+  pillPlumBg: string;
+  pillPlumText: string;
+  pillCoralBg: string;
+  pillCoralText: string;
+  pillHoneyBg: string;
+  pillHoneyText: string;
   danger: string;
   dangerBg: string;
 }
@@ -65,6 +83,16 @@ export const Colors: { light: AppTheme; dark: AppTheme } = {
     pillGreenText: '#246B44',
     pillPeachBg: brand.peachPill,
     pillPeachText: '#8B5A2E',
+    pillMarigoldBg: '#F6E6C9',
+    pillMarigoldText: '#7A5518',
+    pillClayBg: '#F3DED3',
+    pillClayText: '#7A3F2C',
+    pillPlumBg: '#F2D4E2',
+    pillPlumText: '#822651',
+    pillCoralBg: '#F5DCD5',
+    pillCoralText: '#8C3D2A',
+    pillHoneyBg: '#F6EAC7',
+    pillHoneyText: '#6B5518',
     danger: '#D32F2F',
     dangerBg: '#FFEBEE',
   },
@@ -84,6 +112,16 @@ export const Colors: { light: AppTheme; dark: AppTheme } = {
     pillGreenText: '#34D399',
     pillPeachBg: '#3E2D1E',
     pillPeachText: '#FBBF24',
+    pillMarigoldBg: '#4A3B1C',
+    pillMarigoldText: '#F0D9A0',
+    pillClayBg: '#4A2E22',
+    pillClayText: '#F0C4B0',
+    pillPlumBg: '#441D2F',
+    pillPlumText: '#EDABCA',
+    pillCoralBg: '#4A2620',
+    pillCoralText: '#F0BBAC',
+    pillHoneyBg: '#3C351C',
+    pillHoneyText: '#EDDDA0',
     danger: '#F87171',
     dangerBg: '#451A1A',
   },

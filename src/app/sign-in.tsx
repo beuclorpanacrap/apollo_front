@@ -165,7 +165,7 @@ const createStyles = (theme: AppTheme) =>
     alignSelf: "center",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 24,
+    marginBottom: 12,
   },
   title: {
     fontSize: 26,

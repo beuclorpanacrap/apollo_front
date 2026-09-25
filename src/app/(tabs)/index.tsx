@@ -14,9 +14,53 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useAuth } from '@/context/auth-context';
-import { vaultApi, HealthConditionResponse } from '@/api/vault.api';
-import { AppTheme, Colors, Fonts } from '@/constants/theme';
+import { useVault } from '@/context/vault-context';
+import { AppTheme, BrandColors, Fonts } from '@/constants/theme';
 import { useThemeContext } from '@/hooks/use-theme';
+import { EntryCard } from '@/components/vault/entry-card';
+import { EmptyState } from '@/components/ui/empty-state';
+import { Badge, IconBubble } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
+import type { ClinicalEncounterSummaryDto } from '@/api/vault.api';
+import { formatDateLabel, type VaultDisplayEntry } from '@/utils/vault-display';
+
+type TimelineItem =
+  | { type: 'entry'; id: string; sortKey: string; entry: VaultDisplayEntry }
+  | { type: 'encounter'; id: string; sortKey: string; encounter: ClinicalEncounterSummaryDto };
+
+function EncounterTimelineCard({
+  encounter,
+  theme,
+  styles,
+}: {
+  encounter: ClinicalEncounterSummaryDto;
+  theme: AppTheme;
+  styles: ReturnType<typeof createStyles>;
+}) {
+  const subtitle = [encounter.doctorName, encounter.doctorSpecialty].filter(Boolean).join(' · ');
+
+  return (
+    <Card accentColor={BrandColors.deepGreen} style={styles.timelineEncounterCard}>
+      <View style={styles.timelineEncounterRow}>
+        <IconBubble icon="calendar" bg={theme.pillGreenBg} fg={theme.tintStrong} />
+        <View style={styles.timelineEncounterBody}>
+          <View style={styles.timelineEncounterTitleRow}>
+            <Text style={styles.timelineEncounterTitle} numberOfLines={1}>
+              {encounter.diagnosis || 'Doctor visit'}
+            </Text>
+            <Text style={styles.timelineEncounterDate}>
+              {formatDateLabel(encounter.encounterDate ?? encounter.createdAt)}
+            </Text>
+          </View>
+          {subtitle ? <Text style={styles.timelineEncounterSubtitle}>{subtitle}</Text> : null}
+          <View style={styles.timelineEncounterBadge}>
+            <Badge label="Doctor visit" bg={theme.pillGreenBg} fg={theme.pillGreenText} icon="shield-checkmark" />
+          </View>
+        </View>
+      </View>
+    </Card>
+  );
+}
 
 export default function HomeScreen() {
   const { theme, isDark } = useThemeContext();
@@ -32,55 +76,40 @@ export default function HomeScreen() {
   const hours = time.getHours();
   const timeOfDay = hours < 12 ? 'Good morning' : hours < 18 ? 'Good afternoon' : 'Good evening';
 
-  const [conditions, setConditions] = useState<HealthConditionResponse[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const { conditionEntries, prescriptionEntries, labResultEntries, encounters, isLoading, isRefreshing, refresh } = useVault();
+  const [showLogoutDialog, setShowLogoutDialog] = useState<boolean>(false);
 
-  const loadData = async () => {
-    if (!isAuthenticated) {
-      setIsLoading(false);
-      setIsRefreshing(false);
-      return;
-    }
-    try {
-      const conditionList = await vaultApi.getConditions();
-      setConditions(conditionList);
-    } catch (err) {
-      console.warn('[Home] Failed to load initial data:', err);
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  };
+  const recentHighlights = useMemo(() => {
+    const entries: TimelineItem[] = [
+      ...prescriptionEntries,
+      ...labResultEntries,
+      ...conditionEntries,
+    ].map((entry): TimelineItem => ({ type: 'entry', id: `entry-${entry.kind}-${entry.id}`, sortKey: entry.sortKey, entry }));
+    const visits: TimelineItem[] = encounters.map((encounter): TimelineItem => ({
+      type: 'encounter',
+      id: `encounter-${encounter.id ?? `${encounter.diagnosis ?? 'visit'}-${encounter.encounterDate ?? ''}`}`,
+      sortKey: encounter.encounterDate ?? encounter.createdAt ?? '',
+      encounter,
+    }));
+    return [...entries, ...visits]
+      .sort((a, b) => (a.sortKey < b.sortKey ? 1 : a.sortKey > b.sortKey ? -1 : 0))
+      .slice(0, 3);
+  }, [prescriptionEntries, labResultEntries, conditionEntries, encounters]);
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      loadData();
-    } else {
-      setIsLoading(false);
-    }
-  }, [isAuthenticated]);
-
-  // Re-pull the user and their conditions whenever Home regains focus, so
-  // finishing the onboarding survey (or a doctor updating the vault) shows
-  // up immediately without needing a manual pull-to-refresh.
+  // Re-pull the user and their vault whenever Home regains focus, so
+  // finishing the onboarding survey, a doctor's visit, or logging a visit
+  // shows up immediately without needing a manual pull-to-refresh.
   useFocusEffect(
     useCallback(() => {
       if (isAuthenticated) {
         refreshUser();
-        loadData();
+        refresh();
       }
     }, [isAuthenticated])
   );
 
   const onRefresh = async () => {
-    setIsRefreshing(true);
-    try {
-      await refreshUser();
-      await loadData();
-    } finally {
-      setIsRefreshing(false);
-    }
+    await Promise.all([refreshUser(), refresh()]);
   };
 
   const isBaselineIncomplete = !user?.gender;
@@ -136,10 +165,6 @@ export default function HomeScreen() {
               <Ionicons name="water" size={14} color={theme.tintStrong} />
               <Text style={styles.bloodText}>Blood type {user?.bloodType || 'Unknown'}</Text>
             </View>
-            <View style={styles.roleBadge}>
-              <Ionicons name="checkmark-circle" size={14} color={theme.pillPeachText} />
-              <Text style={styles.roleText}>Verified</Text>
-            </View>
             {user?.gender ? (
               <View style={styles.genderBadge}>
                 <Text style={styles.genderText}>{user.gender.replace('_', ' ')}</Text>
@@ -182,60 +207,46 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Health Timeline Section */}
+        {/* Shortcut: one tap straight to Prescriptions instead of Vault → tab */}
+        <TouchableOpacity
+          style={styles.shortcutButton}
+          onPress={() => router.push({ pathname: '/(tabs)/vault', params: { tab: 'prescriptions' } })}
+          activeOpacity={0.85}
+        >
+          <View style={styles.shortcutIconWrap}>
+            <Ionicons name="medical" size={18} color={theme.onTint} />
+          </View>
+          <Text style={styles.shortcutTitle}>Jump to Prescriptions</Text>
+          <Ionicons name="arrow-forward-circle" size={22} color={theme.onTint} />
+        </TouchableOpacity>
+
+        {/* Health Timeline Section — 3 most recent entries across the vault */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Your health timeline</Text>
-          <Text style={styles.sectionCount}>
-            {conditions.length} record{conditions.length === 1 ? '' : 's'}
-          </Text>
         </View>
+        <Text style={styles.sectionCaption}>Latest prescriptions, results, conditions, and doctor visits.</Text>
 
         {isLoading ? (
           <ActivityIndicator color={theme.tintStrong} style={{ marginTop: 24 }} />
-        ) : conditions.length === 0 ? (
-          <View style={styles.placeholderCard}>
-            <Ionicons name="pulse" size={32} color={theme.textTertiary} />
-            <Text style={styles.placeholderTitle}>No timeline records yet</Text>
-            <Text style={styles.placeholderText}>
-              Baseline conditions, verified allergies, and clinical encounter visits from your doctor will appear here.
-            </Text>
-            {/* TODO: Flesh out UI - Add Timeline filter, empty state actions & illustration */}
-          </View>
+        ) : recentHighlights.length === 0 ? (
+          <EmptyState
+            icon="pulse"
+            title="Nothing here yet"
+            description="Prescriptions, test results, conditions, and doctor visits will show up here."
+            actionLabel="Open your vault"
+            onAction={() => router.push('/(tabs)/vault')}
+          />
         ) : (
           <View style={styles.timelineList}>
-            {conditions.map((item) => (
-              <View key={item.id} style={styles.timelineItemCard}>
-                <View style={styles.timelineIconWrapper}>
-                  <Ionicons
-                    name={item.type === 'ALLERGY' ? 'warning' : 'medkit'}
-                    size={20}
-                    color={theme.tintStrong}
-                  />
-                </View>
-                <View style={styles.timelineContent}>
-                  <View style={styles.itemTitleRow}>
-                    <Text style={styles.itemTitle}>{item.title}</Text>
-                    <Text style={styles.itemType}>{item.type ? item.type.replace('_', ' ') : 'CONDITION'}</Text>
-                  </View>
-                  <Text style={styles.itemSource}>
-                    Source: {item.sourceType === 'DOCTOR_VERIFIED' ? 'Doctor Verified' : 'Patient Declared'}
-                  </Text>
-                  <Text style={styles.itemDate}>Recorded: {item.dateRecorded || (item.createdAt ? item.createdAt.slice(0, 10) : '')}</Text>
-                </View>
-                {/* TODO: Flesh out UI - Connect to detailed condition modal or clinical note viewer */}
-              </View>
+            {recentHighlights.map((item) => (
+              item.type === 'encounter' ? (
+                <EncounterTimelineCard key={item.id} encounter={item.encounter} theme={theme} styles={styles} />
+              ) : (
+                <EntryCard key={item.id} entry={item.entry} showKindLabel />
+              )
             ))}
           </View>
         )}
-
-        {/* Skeleton Section for Future Clinical Encounters */}
-        <View style={styles.encountersSkeleton}>
-          <Text style={styles.skeletonTitle}>Clinical encounters & doctor notes</Text>
-          <Text style={styles.skeletonSubtitle}>
-            Visit summaries and doctor diagnoses are automatically appended upon consultation completion.
-          </Text>
-          {/* TODO: Flesh out UI - Connect to encounters endpoint and render encounter accordion cards */}
-        </View>
       </ScrollView>
 
     </SafeAreaView>
@@ -300,8 +311,6 @@ const createStyles = (theme: AppTheme, isDark: boolean) =>
   badgePills: { flexDirection: 'row', gap: 8, marginBottom: 12 },
   bloodBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: theme.pillGreenBg, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
   bloodText: { fontSize: 12, fontFamily: Fonts.sans.semiBold, fontWeight: '600', color: theme.pillGreenText },
-  roleBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: theme.pillPeachBg, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
-  roleText: { fontSize: 12, fontFamily: Fonts.sans.semiBold, fontWeight: '600', color: theme.pillPeachText },
   genderBadge: { backgroundColor: theme.surfaceMuted, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
   genderText: { fontSize: 12, fontFamily: Fonts.sans.semiBold, fontWeight: '600', color: theme.textSecondary, textTransform: 'capitalize' },
   identityDetail: { fontSize: 13, fontFamily: Fonts.sans.regular, color: theme.textSecondary, marginBottom: 4 },
@@ -364,55 +373,37 @@ const createStyles = (theme: AppTheme, isDark: boolean) =>
     marginTop: 14,
   },
   consultationCtaText: { color: theme.onTint, fontSize: 14, fontFamily: Fonts.sans.semiBold, fontWeight: '600' },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  sectionTitle: { fontSize: 17, fontFamily: Fonts.sans.bold, fontWeight: '700', color: theme.text },
-  sectionCount: { fontSize: 12, fontFamily: Fonts.sans.regular, color: theme.textTertiary },
-  placeholderCard: {
-    backgroundColor: theme.backgroundElement,
-    borderRadius: 14,
-    padding: 24,
+  shortcutButton: {
+    flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: theme.border,
+    gap: 12,
+    backgroundColor: theme.tintStrong,
+    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
     marginBottom: 20,
   },
-  placeholderTitle: { fontSize: 15, fontFamily: Fonts.sans.semiBold, fontWeight: '600', color: theme.text, marginTop: 8, marginBottom: 4 },
-  placeholderText: { fontSize: 12, fontFamily: Fonts.sans.regular, color: theme.textSecondary, textAlign: 'center', lineHeight: 17 },
-  timelineList: { gap: 10, marginBottom: 20 },
-  timelineItemCard: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    backgroundColor: theme.backgroundElement,
-    borderRadius: 12,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: theme.border,
-    gap: 12,
-  },
-  timelineIconWrapper: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: theme.pillGreenBg,
+  shortcutIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.18)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  timelineContent: { flex: 1 },
-  itemTitleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  itemTitle: { fontSize: 14, fontFamily: Fonts.sans.semiBold, fontWeight: '600', color: theme.text },
-  itemType: { fontSize: 10, fontFamily: Fonts.sans.bold, fontWeight: '700', color: theme.tintStrong, textTransform: 'uppercase' },
-  itemSource: { fontSize: 12, fontFamily: Fonts.sans.regular, color: theme.textSecondary, marginTop: 2 },
-  itemDate: { fontSize: 11, fontFamily: Fonts.sans.regular, color: theme.textTertiary, marginTop: 2 },
-  encountersSkeleton: {
-    backgroundColor: theme.surfaceMuted,
-    borderRadius: 12,
-    padding: 16,
-    borderStyle: 'dashed',
-    borderWidth: 1,
-    borderColor: theme.border,
-  },
-  skeletonTitle: { fontSize: 14, fontFamily: Fonts.sans.semiBold, fontWeight: '600', color: theme.text, marginBottom: 4 },
-  skeletonSubtitle: { fontSize: 12, fontFamily: Fonts.sans.regular, color: theme.textSecondary, lineHeight: 16 },
+  shortcutTitle: { flex: 1, fontSize: 15, fontFamily: Fonts.sans.bold, fontWeight: '700', color: theme.onTint },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
+  sectionTitle: { fontSize: 17, fontFamily: Fonts.sans.bold, fontWeight: '700', color: theme.text },
+  sectionCaption: { fontSize: 12, fontFamily: Fonts.sans.regular, color: theme.textTertiary, marginBottom: 12 },
+  timelineList: { gap: 10, marginBottom: 20 },
+  timelineEncounterCard: { marginBottom: 0 },
+  timelineEncounterRow: { flexDirection: 'row', gap: 12 },
+  timelineEncounterBody: { flex: 1, minWidth: 0 },
+  timelineEncounterTitleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
+  timelineEncounterTitle: { flex: 1, fontSize: 15, fontFamily: Fonts.sans.bold, fontWeight: '700', color: theme.text },
+  timelineEncounterDate: { fontSize: 11, fontFamily: Fonts.sans.medium, color: theme.textTertiary },
+  timelineEncounterSubtitle: { fontSize: 13, fontFamily: Fonts.sans.regular, color: theme.textSecondary, marginTop: 3 },
+  timelineEncounterBadge: { alignSelf: 'flex-start', marginTop: 8 },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(30, 40, 30, 0.5)',

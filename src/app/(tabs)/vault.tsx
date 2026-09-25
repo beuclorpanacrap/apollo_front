@@ -1,309 +1,439 @@
-import React, { useState, useCallback, useMemo } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  ActivityIndicator,
-  RefreshControl,
-  Platform,
-} from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from 'expo-router';
-import { useAuth } from '@/context/auth-context';
-import {
-  vaultApi,
-  PrescriptionResponse,
-  LabTestResultResponse,
-  HealthConditionResponse,
-} from '@/api/vault.api';
-import { AppTheme, Colors, Fonts } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 
-type VaultTab = 'prescriptions' | 'test-results' | 'conditions';
+import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/ui/empty-state';
+import { Pagination } from '@/components/ui/pagination';
+import { EntryCard } from '@/components/vault/entry-card';
+import { AppTheme, BrandColors, Fonts, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
+import { useVault } from '@/context/vault-context';
+import type { VaultDisplayEntry } from '@/utils/vault-display';
+
+type TabKey = 'prescriptions' | 'labs' | 'conditions';
+
+const TABS: { key: TabKey; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+  { key: 'prescriptions', label: 'Prescriptions', icon: 'medical' },
+  { key: 'labs', label: 'Test Results', icon: 'flask' },
+  { key: 'conditions', label: 'Conditions', icon: 'clipboard' },
+];
+
+type RxFilter = 'ALL' | 'ACTIVE' | 'FULFILLED';
+const RX_FILTERS: RxFilter[] = ['ALL', 'ACTIVE', 'FULFILLED'];
+type ConditionFilter = 'ALL' | 'ACTIVE' | 'RESOLVED';
+const CONDITION_FILTERS: ConditionFilter[] = ['ALL', 'ACTIVE', 'RESOLVED'];
+type OrderOption = 'newest' | 'oldest' | 'nameAsc' | 'nameDesc';
+const ORDER_OPTIONS: { key: OrderOption; label: string }[] = [
+  { key: 'newest', label: 'Newest first' },
+  { key: 'oldest', label: 'Oldest first' },
+  { key: 'nameAsc', label: 'Name A–Z' },
+  { key: 'nameDesc', label: 'Name Z–A' },
+];
+
+function orderEntries(entries: VaultDisplayEntry[], order: OrderOption): VaultDisplayEntry[] {
+  return [...entries].sort((a, b) => {
+    if (order === 'nameAsc') return a.title.localeCompare(b.title);
+    if (order === 'nameDesc') return b.title.localeCompare(a.title);
+    if (!a.sortKey) return b.sortKey ? 1 : 0;
+    if (!b.sortKey) return -1;
+    if (order === 'oldest') return a.sortKey.localeCompare(b.sortKey);
+    return b.sortKey.localeCompare(a.sortKey);
+  });
+}
+
+type ConditionGroupDef = { type: string; label: string; color: string; pillBg: string; pillText: string };
+const getConditionGroups = (theme: AppTheme): ConditionGroupDef[] => [
+  { type: 'CHRONIC_CONDITION', label: 'Chronic conditions', color: BrandColors.plum, pillBg: theme.pillPlumBg, pillText: theme.pillPlumText },
+  { type: 'ALLERGY', label: 'Allergies', color: BrandColors.coral, pillBg: theme.pillCoralBg, pillText: theme.pillCoralText },
+  { type: 'LIFESTYLE', label: 'Lifestyle', color: BrandColors.honey, pillBg: theme.pillHoneyBg, pillText: theme.pillHoneyText },
+];
+const GROUP_PREVIEW_LIMIT = 5;
+// Chronic conditions / Allergies / Lifestyle each paginate independently at
+// this size. Change this one value to adjust all three at once.
+const CONDITIONS_PAGE_SIZE = 4;
+
+function ConditionGroupSection({
+  group,
+  entries,
+  paginated = false,
+}: {
+  group: { type: string; label: string; color: string; pillBg: string; pillText: string };
+  entries: VaultDisplayEntry[];
+  /** Chronic conditions / Allergies / Lifestyle pass true. The catch-all
+   *  "Other" bucket omits this and keeps its original preview + search
+   *  behavior untouched. */
+  paginated?: boolean;
+}) {
+  const router = useRouter();
+  // Own page state per rendered section — since each group renders its own
+  // instance of this component, Chronic conditions/Allergies/Lifestyle each
+  // get an independent page number for free, with no shared/global state.
+  const [page, setPage] = useState(1);
+
+  const pageCount = Math.max(1, Math.ceil(entries.length / CONDITIONS_PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount);
+  const visible = paginated
+    ? entries.slice((currentPage - 1) * CONDITIONS_PAGE_SIZE, currentPage * CONDITIONS_PAGE_SIZE)
+    : entries.slice(0, GROUP_PREVIEW_LIMIT);
+
+  return (
+    <View style={styles.groupSection}>
+      <View style={styles.groupHeader}>
+        <View style={styles.groupHeaderLeft}>
+          <View style={[styles.groupDot, { backgroundColor: group.color }]} />
+          <Text style={styles.groupTitle}>{group.label}</Text>
+        </View>
+        <View style={[styles.groupCountPill, { backgroundColor: group.pillBg }]}>
+          <Text style={[styles.groupCountText, { color: group.pillText }]}>{entries.length}</Text>
+        </View>
+      </View>
+
+      {visible.length === 0 ? (
+        <Text style={styles.groupEmptyText}>Nothing logged yet.</Text>
+      ) : (
+        <View style={styles.list}>
+          {visible.map((entry) => (
+            <EntryCard key={entry.id} entry={entry} />
+          ))}
+        </View>
+      )}
+
+      {paginated ? (
+        <Pagination page={currentPage} pageCount={pageCount} onPageChange={setPage} />
+      ) : entries.length > GROUP_PREVIEW_LIMIT ? (
+        <TouchableOpacity
+          style={styles.seeAllButton}
+          onPress={() => router.push({ pathname: '/vault/condition-search', params: { type: group.type } })}
+          activeOpacity={0.7}
+        >
+          <Text style={[styles.seeAllText, { color: group.color }]}>
+            See all {entries.length} — search for more
+          </Text>
+          <Ionicons name="search" size={13} color={group.color} />
+        </TouchableOpacity>
+      ) : null}
+    </View>
+  );
+}
 
 export default function VaultScreen() {
   const theme = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const { isAuthenticated } = useAuth();
-  const [activeTab, setActiveTab] = useState<VaultTab>('prescriptions');
-  const [prescriptions, setPrescriptions] = useState<PrescriptionResponse[]>([]);
-  const [testResults, setTestResults] = useState<LabTestResultResponse[]>([]);
-  const [conditions, setConditions] = useState<HealthConditionResponse[]>([]);
-  const [prescriptionFilter, setPrescriptionFilter] = useState<'ACTIVE' | 'FULFILLED' | 'ALL'>('ACTIVE');
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const router = useRouter();
+  const params = useLocalSearchParams<{ tab?: string }>();
+  const { isLoading, isRefreshing, error, refresh, prescriptionEntries, labResultEntries, conditionEntries } =
+    useVault();
 
-  const fetchTabContent = useCallback(async () => {
-    if (!isAuthenticated) {
-      setIsLoading(false);
-      setIsRefreshing(false);
-      return;
-    }
-    setIsLoading(true);
-    try {
-      if (activeTab === 'prescriptions') {
-        const filter = prescriptionFilter === 'ALL' ? undefined : prescriptionFilter;
-        const data = await vaultApi.getPrescriptions(filter);
-        setPrescriptions(data);
-      } else if (activeTab === 'test-results') {
-        const data = await vaultApi.getTestResults();
-        setTestResults(data);
-      } else if (activeTab === 'conditions') {
-        const data = await vaultApi.getConditions();
-        setConditions(data);
-      }
-    } catch (err) {
-      console.warn(`[Vault] Error loading ${activeTab}:`, err);
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  }, [isAuthenticated, activeTab, prescriptionFilter]);
+  const [activeTab, setActiveTab] = useState<TabKey>('prescriptions');
+  const [rxFilter, setRxFilter] = useState<RxFilter>('ALL');
+  const [conditionFilter, setConditionFilter] = useState<ConditionFilter>('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [orderBy, setOrderBy] = useState<OrderOption>('newest');
+  const [showOrderOptions, setShowOrderOptions] = useState(false);
 
-  // Refetch whenever the Vault tab regains focus (not just on mount/dep change),
-  // so records saved during a doctor consultation show up immediately on return.
-  useFocusEffect(
-    useCallback(() => {
-      fetchTabContent();
-    }, [fetchTabContent])
+  const visibleConditionEntries = useMemo(
+    () => conditionEntries.filter((entry) => conditionFilter === 'ALL' || entry.conditionStatus === conditionFilter),
+    [conditionEntries, conditionFilter]
   );
 
-  const onRefresh = () => {
-    setIsRefreshing(true);
-    fetchTabContent();
-  };
+  const categoryEntries = useMemo(() => {
+    if (activeTab === 'prescriptions') {
+      const matching = prescriptionEntries.filter(
+        (entry) => rxFilter === 'ALL' || entry.prescriptionStatus === rxFilter
+      );
+      return orderEntries(matching, orderBy);
+    }
+    return orderEntries(activeTab === 'labs' ? labResultEntries : visibleConditionEntries, orderBy);
+  }, [activeTab, prescriptionEntries, labResultEntries, visibleConditionEntries, rxFilter, orderBy]);
+  const searchResults = useMemo(() => {
+    const queryTokens = searchQuery.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
+    if (queryTokens.length === 0) return [];
+    return categoryEntries.filter((entry) => {
+      const kindLabel =
+        entry.kind === 'LAB_RESULT'
+          ? 'lab test result'
+          : entry.kind === 'PRESCRIPTION'
+            ? 'prescription medication'
+            : 'health condition';
+      const searchable = [
+        entry.title,
+        entry.subtitle,
+        entry.dateLabel,
+        kindLabel,
+        entry.conditionType,
+        entry.conditionStatus,
+        entry.prescriptionStatus,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLocaleLowerCase();
+      return queryTokens.every((token) => searchable.includes(token));
+    });
+  }, [categoryEntries, searchQuery]);
+
+  // Lets Home's "jump to prescriptions" shortcut land on a specific tab in
+  // one tap instead of landing on Vault and requiring a second tap.
+  useEffect(() => {
+    if (params.tab === 'prescriptions' || params.tab === 'labs' || params.tab === 'conditions') {
+      setActiveTab(params.tab);
+      setSearchQuery('');
+    }
+  }, [params.tab]);
+
+  const conditionGroups = useMemo(() => getConditionGroups(theme), [theme]);
+
+  const conditionsByGroup = useMemo(() => {
+    const map = new Map<string, VaultDisplayEntry[]>();
+    for (const group of conditionGroups) map.set(group.type, []);
+    const other: VaultDisplayEntry[] = [];
+    for (const entry of orderEntries(visibleConditionEntries, orderBy)) {
+      const t = entry.conditionType ?? '';
+      if (map.has(t)) {
+        map.get(t)!.push(entry);
+      } else {
+        other.push(entry);
+      }
+    }
+    return { map, other };
+  }, [visibleConditionEntries, orderBy]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={refresh} />}
+        stickyHeaderIndices={[1]}
+      >
         <View style={styles.header}>
-          <Text style={styles.title}>Health Vault</Text>
-          <Text style={styles.subtitle}>Every prescription, result, and condition, all in one place.</Text>
+          <View style={styles.headerCard}>
+            <Text style={styles.headerTitle}>Health Vault</Text>
+            <Text style={styles.headerSubtitle}>Every prescription, result, and condition, all in one place.</Text>
+          </View>
         </View>
 
-        {/* Segmented Top Control */}
-        <View style={styles.segmentedControl}>
-          <TouchableOpacity
-            style={[styles.segmentBtn, activeTab === 'prescriptions' && styles.segmentBtnActive]}
-            onPress={() => setActiveTab('prescriptions')}
-          >
-            <Ionicons
-              name="medkit"
-              size={16}
-              color={activeTab === 'prescriptions' ? theme.tintStrong : theme.textSecondary}
-            />
-            <Text style={activeTab === 'prescriptions' ? styles.segmentTextActive : styles.segmentText}>
-              Prescriptions
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.segmentBtn, activeTab === 'test-results' && styles.segmentBtnActive]}
-            onPress={() => setActiveTab('test-results')}
-          >
-            <Ionicons
-              name="analytics"
-              size={16}
-              color={activeTab === 'test-results' ? theme.tintStrong : theme.textSecondary}
-            />
-            <Text style={activeTab === 'test-results' ? styles.segmentTextActive : styles.segmentText}>
-              Test Results
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.segmentBtn, activeTab === 'conditions' && styles.segmentBtnActive]}
-            onPress={() => setActiveTab('conditions')}
-          >
-            <Ionicons
-              name="list"
-              size={16}
-              color={activeTab === 'conditions' ? theme.tintStrong : theme.textSecondary}
-            />
-            <Text style={activeTab === 'conditions' ? styles.segmentTextActive : styles.segmentText}>
-              Conditions
-            </Text>
-          </TouchableOpacity>
+        <View style={styles.tabStrip}>
+          <View style={styles.tabStripRow}>
+            {TABS.map((tab) => {
+              const active = activeTab === tab.key;
+              return (
+                <TouchableOpacity
+                  key={tab.key}
+                  onPress={() => {
+                    setActiveTab(tab.key);
+                    setSearchQuery('');
+                  }}
+                  style={[styles.tabPill, active && styles.tabPillActive]}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name={tab.icon} size={15} color={active ? theme.onTint : theme.textSecondary} />
+                  <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>{tab.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         </View>
 
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />}
-        >
-          {/* Sub-tab 1: Prescriptions */}
-          {activeTab === 'prescriptions' && (
+        <View style={styles.searchControlsRow}>
+          <View style={styles.searchBox}>
+            <Ionicons name="search" size={18} color={theme.textSecondary} />
+            <TextInput
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholder={`Search ${activeTab === 'labs' ? 'test results' : activeTab}`}
+              placeholderTextColor={theme.textTertiary}
+              style={styles.searchInput}
+              returnKeyType="search"
+              accessibilityLabel={`Search ${TABS.find((tab) => tab.key === activeTab)?.label ?? 'vault'}`}
+            />
+            {searchQuery.length > 0 ? (
+              <Pressable onPress={() => setSearchQuery('')} hitSlop={10} accessibilityLabel="Clear search">
+                <Ionicons name="close-circle" size={18} color={theme.textTertiary} />
+              </Pressable>
+            ) : null}
+          </View>
+          <TouchableOpacity
+            style={styles.orderButton}
+            onPress={() => setShowOrderOptions((open) => !open)}
+            accessibilityRole="button"
+            accessibilityLabel={`Order by ${ORDER_OPTIONS.find((option) => option.key === orderBy)?.label}`}
+          >
+            <Ionicons name="swap-vertical" size={17} color={theme.tintStrong} />
             <View>
-              {/* Filter Pills */}
-              <View style={styles.filterRow}>
-                {(['ACTIVE', 'FULFILLED', 'ALL'] as const).map((filter) => (
-                  <TouchableOpacity
-                    key={filter}
-                    style={[styles.filterPill, prescriptionFilter === filter && styles.filterPillActive]}
-                    onPress={() => setPrescriptionFilter(filter)}
-                  >
-                    <Text
-                      style={
-                        prescriptionFilter === filter ? styles.filterTextActive : styles.filterText
-                      }
-                    >
-                      {filter === 'ALL' ? 'All' : filter === 'ACTIVE' ? 'Active' : 'Fulfilled'}
-                    </Text>
-                  </TouchableOpacity>
+              <Text style={styles.orderButtonLabel}>Order by</Text>
+              <Text style={styles.orderButtonValue}>{ORDER_OPTIONS.find((option) => option.key === orderBy)?.label}</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+        {showOrderOptions ? (
+          <View style={styles.orderMenu}>
+            {ORDER_OPTIONS.map((option) => {
+              const selected = orderBy === option.key;
+              return (
+                <TouchableOpacity
+                  key={option.key}
+                  onPress={() => {
+                    setOrderBy(option.key);
+                    setShowOrderOptions(false);
+                  }}
+                  style={[styles.orderOption, selected && styles.orderOptionSelected]}
+                >
+                  <Text style={[styles.orderOptionText, selected && styles.orderOptionTextSelected]}>{option.label}</Text>
+                  {selected ? <Ionicons name="checkmark" size={15} color={theme.tintStrong} /> : null}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        ) : null}
+
+        {error ? (
+          <View style={styles.errorBanner}>
+            <Ionicons name="alert-circle" size={16} color={theme.danger} />
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        ) : null}
+
+        {isLoading ? (
+          <ActivityIndicator color={theme.tintStrong} style={{ marginTop: 40 }} />
+        ) : searchQuery.trim() ? (
+          <>
+            <Text style={styles.searchResultsTitle}>
+              {searchResults.length} {searchResults.length === 1 ? 'result' : 'results'} in {TABS.find((tab) => tab.key === activeTab)?.label}
+            </Text>
+            {searchResults.length === 0 ? (
+              <EmptyState
+                icon="search"
+                title="No matching records"
+                description="Try another word in this section."
+              />
+            ) : (
+              <View style={styles.list}>
+                {searchResults.map((entry) => (
+                  <EntryCard key={`${entry.kind}-${entry.id}`} entry={entry} />
                 ))}
               </View>
-
-              {isLoading ? (
-                <ActivityIndicator color={theme.tintStrong} style={{ marginTop: 32 }} />
-              ) : prescriptions.length === 0 ? (
-                <View style={styles.emptyCard}>
-                  <Ionicons name="document-text" size={32} color={theme.textTertiary} />
-                  <Text style={styles.emptyTitle}>No prescriptions found</Text>
-                  <Text style={styles.emptyDesc}>
-                    Prescriptions prescribed during doctor consultations will be visible here with dosages and instructions.
-                  </Text>
-                  {/* TODO: Flesh out UI - Add pharmacy pickup badge and QR code dispenser modal */}
-                </View>
-              ) : (
-                <View style={styles.cardList}>
-                  {prescriptions.map((p) => (
-                    <View key={p.id} style={styles.prescriptionCard}>
-                      <View style={styles.cardHeaderRow}>
-                        <Text style={styles.medicationName}>{p.medicationName}</Text>
-                        <View
-                          style={[
-                            styles.statusBadge,
-                            p.status === 'ACTIVE' ? styles.statusActive : styles.statusFulfilled,
-                          ]}
+            )}
+          </>
+        ) : (
+          <>
+            {activeTab === 'prescriptions' && (
+              <>
+                <View style={styles.prescriptionControlsRow}>
+                  <View style={styles.filterRow}>
+                    {RX_FILTERS.map((f) => {
+                      const active = rxFilter === f;
+                      return (
+                        <TouchableOpacity
+                          key={f}
+                          onPress={() => setRxFilter(f)}
+                          style={[styles.filterPill, active && styles.filterPillActive]}
                         >
-                          <Text
-                            style={[
-                              styles.statusText,
-                              p.status === 'ACTIVE' ? styles.statusTextActive : styles.statusTextFulfilled,
-                            ]}
+                          <Text style={[styles.filterLabel, active && styles.filterLabelActive]}>
+                            {f.charAt(0) + f.slice(1).toLowerCase()}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                  <View style={styles.prescriptionAddButtonRow}>
+                    <Button label="Add prescription" icon="add" size="compact" onPress={() => router.push('/vault/add-prescription')} />
+                  </View>
+                </View>
+                {categoryEntries.length === 0 ? (
+                  <EmptyState
+                    icon="medical"
+                    title="No prescriptions here"
+                    description="Medications your doctor prescribes, or that you add yourself, will show up here."
+                  />
+                ) : (
+                  <View style={styles.list}>
+                    {categoryEntries.map((entry) => (
+                      <EntryCard key={entry.id} entry={entry} />
+                    ))}
+                  </View>
+                )}
+              </>
+            )}
+
+            {activeTab === 'labs' && (
+              <>
+                <View style={[styles.addButtonRow, styles.labAddButtonRow]}>
+                  <Button label="Add test result" icon="add" size="compact" onPress={() => router.push('/vault/add-lab-result')} />
+                </View>
+                {categoryEntries.length === 0 ? (
+                  <EmptyState
+                    icon="flask"
+                    title="No test results yet"
+                    description="Lab results from your doctor, or ones you add yourself, will show up here."
+                  />
+                ) : (
+                  <View style={styles.list}>
+                    {categoryEntries.map((entry) => (
+                      <EntryCard key={entry.id} entry={entry} />
+                    ))}
+                  </View>
+                )}
+              </>
+            )}
+
+            {activeTab === 'conditions' && (
+              <>
+                <View style={styles.conditionControlsRow}>
+                  <View style={styles.conditionFilterSection}>
+                    <View style={styles.conditionFilterRow}>
+                      {CONDITION_FILTERS.map((filter) => {
+                        const active = conditionFilter === filter;
+                        return (
+                          <TouchableOpacity
+                            key={filter}
+                            onPress={() => setConditionFilter(filter)}
+                            style={[styles.filterPill, styles.conditionFilterPill, active && styles.filterPillActive]}
                           >
-                            {p.status}
-                          </Text>
-                        </View>
-                      </View>
-                      <Text style={styles.dosageText}>Dosage: {p.dosage}</Text>
-                      <Text style={styles.instructionsText}>Instructions: {p.instructions}</Text>
-                      <View style={styles.cardFooter}>
-                        <Text style={styles.doctorText}>Prescribed by: {p.doctorName}</Text>
-                        <Text style={styles.expiresText}>
-                          Expires: {p.expiresAt ? p.expiresAt.slice(0, 10) : '—'}
-                        </Text>
-                      </View>
-                      {/* TODO: Flesh out UI - Add 'Mark as Fulfilled' patient dispensing button */}
+                            <Text style={[styles.filterLabel, styles.conditionFilterText, active && styles.filterLabelActive]}>
+                              {filter.charAt(0) + filter.slice(1).toLowerCase()}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
                     </View>
-                  ))}
+                  </View>
+                  <View style={styles.conditionAddButtonWrap}>
+                    <Button
+                      label="Add condition"
+                      icon="add"
+                      size="compact"
+                      onPress={() => router.push('/vault/add-condition')}
+                      fullWidth
+                    />
+                  </View>
                 </View>
-              )}
-            </View>
-          )}
-
-          {/* Sub-tab 2: Test Results & Biomarker Charts */}
-          {activeTab === 'test-results' && (
-            <View>
-              {/* Chart Placeholder / Trend Skeleton */}
-              <View style={styles.chartContainer}>
-                <View style={styles.chartHeader}>
-                  <Ionicons name="trending-up" size={20} color={theme.tintStrong} />
-                  <Text style={styles.chartTitle}>Biomarker Time-Series Trends</Text>
-                </View>
-                <Text style={styles.chartDesc}>
-                  Chronological measurements sorted ascending for trend analysis.
-                </Text>
-
-                {/* Interactive Chart Skeleton Canvas */}
-                <View style={styles.chartCanvasPlaceholder}>
-                  <Ionicons name="pulse" size={40} color={theme.tintStrong} />
-                  <Text style={styles.chartPlaceholderNote}>
-                    {testResults.length > 0
-                      ? `Rendering trend graph for ${testResults.length} observation(s)`
-                      : 'No biomarker points to plot yet'}
-                  </Text>
-                  {/* TODO: Flesh out UI - Plug in SVG line chart using react-native-svg or victory-native */}
-                </View>
-              </View>
-
-              {isLoading ? (
-                <ActivityIndicator color={theme.tintStrong} style={{ marginTop: 24 }} />
-              ) : testResults.length === 0 ? (
-                <View style={styles.emptyCard}>
-                  <Ionicons name="flask" size={32} color={theme.textTertiary} />
-                  <Text style={styles.emptyTitle}>No diagnostic results</Text>
-                  <Text style={styles.emptyDesc}>
-                    Diagnostic lab observations (e.g. Glucose, Hemoglobin, Lipids) will be logged by your lab technician.
-                  </Text>
-                </View>
-              ) : (
-                <View style={styles.cardList}>
-                  {testResults.map((r) => (
-                    <View key={r.id} style={styles.testResultCard}>
-                      <View style={styles.cardHeaderRow}>
-                        <Text style={styles.testName}>{r.testName}</Text>
-                        <Text style={styles.testValue}>
-                          {r.numericValue} {r.unit}
-                        </Text>
-                      </View>
-                      <View style={styles.cardFooter}>
-                        <Text style={styles.doctorText}>Attending: {r.doctorName}</Text>
-                        <Text style={styles.expiresText}>
-                          Date: {r.recordedAt ? r.recordedAt.slice(0, 10) : ''}
-                        </Text>
-                      </View>
-                      {/* TODO: Flesh out UI - Add reference range thresholds (Normal/High/Low) and indicator pills */}
-                    </View>
-                  ))}
-                </View>
-              )}
-            </View>
-          )}
-
-          {/* Sub-tab 3: Baseline Conditions & Records */}
-          {activeTab === 'conditions' && (
-            <View>
-              {isLoading ? (
-                <ActivityIndicator color={theme.tintStrong} style={{ marginTop: 32 }} />
-              ) : conditions.length === 0 ? (
-                <View style={styles.emptyCard}>
-                  <Ionicons name="folder-open" size={32} color={theme.textTertiary} />
-                  <Text style={styles.emptyTitle}>No conditions declared</Text>
-                  <Text style={styles.emptyDesc}>
-                    Keep foundational medical allergies, chronic diseases, and past surgeries recorded here.
-                  </Text>
-                  {/* TODO: Flesh out UI - Add 'Add Condition' patient input modal */}
-                </View>
-              ) : (
-                <View style={styles.cardList}>
-                  {conditions.map((c) => (
-                    <View key={c.id} style={styles.conditionCard}>
-                      <View style={styles.cardHeaderRow}>
-                        <Text style={styles.conditionTitle}>{c.title}</Text>
-                        <View style={styles.sourceBadge}>
-                          <Text style={styles.sourceText}>
-                            {c.sourceType ? c.sourceType.replace('_', ' ') : 'PATIENT'}
-                          </Text>
-                        </View>
-                      </View>
-                      <Text style={styles.conditionType}>
-                        Type: {c.type ? c.type.replace('_', ' ') : 'CONDITION'}
-                      </Text>
-                      <Text style={styles.conditionDate}>
-                        Diagnosed / Recorded: {c.dateRecorded || (c.createdAt ? c.createdAt.slice(0, 10) : '')}
-                      </Text>
-                      {/* TODO: Flesh out UI - Add delete button for patient-declared records */}
-                    </View>
-                  ))}
-                </View>
-              )}
-            </View>
-          )}
-        </ScrollView>
-      </View>
+                {conditionGroups.map((group) => (
+                  <ConditionGroupSection
+                    key={group.type}
+                    group={group}
+                    entries={conditionsByGroup.map.get(group.type) ?? []}
+                    paginated
+                  />
+                ))}
+                {conditionsByGroup.other.length > 0 ? (
+                  <ConditionGroupSection
+                    group={{
+                      type: 'OTHER',
+                      label: 'Other',
+                      color: BrandColors.clay,
+                      pillBg: theme.pillClayBg,
+                      pillText: theme.pillClayText,
+                    }}
+                    entries={conditionsByGroup.other}
+                  />
+                ) : null}
+              </>
+            )}
+          </>
+        )}
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -311,127 +441,141 @@ export default function VaultScreen() {
 const createStyles = (theme: AppTheme) =>
   StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: theme.background },
-  container: { flex: 1, paddingHorizontal: 20, paddingTop: 16, maxWidth: 640, alignSelf: 'center', width: '100%' },
-  header: { marginBottom: 16 },
-  title: { fontSize: 24, fontFamily: Fonts.sans.bold, fontWeight: '700', color: theme.text },
-  subtitle: { fontSize: 13, fontFamily: Fonts.sans.regular, color: theme.textSecondary, marginTop: 4 },
-  segmentedControl: {
+  header: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 14, marginHorizontal: -20 },
+  // Green card treatment reused from Home's greeting card 
+  headerCard: {
+    backgroundColor: theme.tintStrong,
+    borderRadius: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    maxWidth: 600,
+    alignSelf: 'center',
+    width: '100%',
+  },
+  headerTitle: { fontSize: 24, fontFamily: Fonts.display, fontWeight: '800', color: '#FFFDF7' },
+  headerSubtitle: { fontSize: 13, fontFamily: Fonts.sans.regular, color: 'rgba(255,255,255,0.85)', marginTop: 4 },
+  // Stays pinned while the large title card scrolls away to free screen space.
+  tabStrip: {
+    flexGrow: 0,
+    marginHorizontal: -20,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.border,
+    paddingTop: 4,
+    paddingBottom: 12,
+    backgroundColor: theme.background,
+    zIndex: 1,
+  },
+  tabStripRow: {
     flexDirection: 'row',
-    backgroundColor: theme.surfaceMuted,
-    borderRadius: 12,
-    padding: 4,
-    marginBottom: 16,
-    gap: 4,
-  },
-  segmentBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    borderRadius: 10,
-  },
-  segmentBtnActive: {
-    backgroundColor: theme.backgroundElement,
-    ...Platform.select({
-      web: {
-        boxShadow: '0 1px 3px rgba(50, 122, 76, 0.10)',
-      },
-      default: {
-        shadowColor: theme.tintStrong,
-        shadowOpacity: 0.1,
-        shadowRadius: 3,
-        elevation: 1,
-      },
-    }),
-  },
-  segmentText: { fontSize: 13, fontFamily: Fonts.sans.medium, color: theme.textSecondary, fontWeight: '500' },
-  segmentTextActive: { fontSize: 13, fontFamily: Fonts.sans.bold, color: theme.tintStrong, fontWeight: '700' },
-  scrollContent: { paddingBottom: 32 },
-  filterRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
-  filterPill: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 16,
-    backgroundColor: theme.surfaceMuted,
-  },
-  filterPillActive: { backgroundColor: theme.tint },
-  filterText: { fontSize: 12, fontFamily: Fonts.sans.medium, color: theme.textSecondary, fontWeight: '500' },
-  filterTextActive: { fontSize: 12, fontFamily: Fonts.sans.semiBold, color: theme.onTint, fontWeight: '600' },
-  cardList: { gap: 12 },
-  prescriptionCard: {
-    backgroundColor: theme.backgroundElement,
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: theme.border,
-  },
-  cardHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  medicationName: { fontSize: 16, fontFamily: Fonts.sans.bold, fontWeight: '700', color: theme.text },
-  statusBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
-  statusActive: { backgroundColor: theme.pillGreenBg },
-  statusFulfilled: { backgroundColor: theme.surfaceMuted },
-  statusText: { fontSize: 11, fontFamily: Fonts.sans.bold, fontWeight: '700' },
-  statusTextActive: { color: theme.pillGreenText },
-  statusTextFulfilled: { color: theme.textSecondary },
-  dosageText: { fontSize: 13, fontFamily: Fonts.sans.medium, color: theme.text, fontWeight: '500', marginBottom: 4 },
-  instructionsText: { fontSize: 13, fontFamily: Fonts.sans.regular, color: theme.textSecondary, marginBottom: 10, lineHeight: 18 },
-  cardFooter: { flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: theme.border, paddingTop: 8 },
-  doctorText: { fontSize: 11, fontFamily: Fonts.sans.regular, color: theme.textTertiary },
-  expiresText: { fontSize: 11, fontFamily: Fonts.sans.regular, color: theme.textTertiary },
-  emptyCard: {
-    backgroundColor: theme.backgroundElement,
-    borderRadius: 14,
-    padding: 32,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: theme.border,
-  },
-  emptyTitle: { fontSize: 15, fontFamily: Fonts.sans.semiBold, fontWeight: '600', color: theme.text, marginTop: 8, marginBottom: 4 },
-  emptyDesc: { fontSize: 12, fontFamily: Fonts.sans.regular, color: theme.textSecondary, textAlign: 'center', lineHeight: 17 },
-  chartContainer: {
-    backgroundColor: theme.backgroundElement,
-    borderRadius: 14,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: theme.border,
-    marginBottom: 16,
-  },
-  chartHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
-  chartTitle: { fontSize: 15, fontFamily: Fonts.sans.bold, fontWeight: '700', color: theme.text },
-  chartDesc: { fontSize: 12, fontFamily: Fonts.sans.regular, color: theme.textSecondary, marginBottom: 16 },
-  chartCanvasPlaceholder: {
-    height: 140,
-    backgroundColor: theme.pillGreenBg,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: theme.tint,
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexWrap: 'wrap',
     gap: 8,
+    paddingHorizontal: 20,
+    maxWidth: 600,
+    alignSelf: 'center',
+    width: '100%',
   },
-  chartPlaceholderNote: { fontSize: 12, fontFamily: Fonts.sans.medium, color: theme.tintStrong, fontWeight: '500' },
-  testResultCard: {
-    backgroundColor: theme.backgroundElement,
-    borderRadius: 12,
-    padding: 16,
+  tabPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 14,
+    backgroundColor: theme.surfaceMuted,
+  },
+  tabPillActive: { backgroundColor: theme.tintStrong },
+  tabLabel: { fontSize: 13, fontFamily: Fonts.sans.semiBold, fontWeight: '600', color: theme.textSecondary },
+  tabLabelActive: { color: theme.onTint },
+  content: { paddingHorizontal: 20, paddingTop: 0, paddingBottom: 40, maxWidth: 600, alignSelf: 'center', width: '100%' },
+  searchControlsRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 16, marginBottom: Spacing.four },
+  searchBox: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
     borderWidth: 1,
     borderColor: theme.border,
-  },
-  testName: { fontSize: 15, fontFamily: Fonts.sans.semiBold, fontWeight: '600', color: theme.text },
-  testValue: { fontSize: 16, fontFamily: Fonts.sans.extraBold, fontWeight: '800', color: theme.tintStrong },
-  conditionCard: {
+    borderRadius: 14,
+    paddingHorizontal: 14,
     backgroundColor: theme.backgroundElement,
-    borderRadius: 12,
-    padding: 16,
+  },
+  searchInput: { flex: 1, minWidth: 0, paddingVertical: 13, fontSize: 14, fontFamily: Fonts.sans.regular, color: theme.text },
+  searchResultsTitle: { fontSize: 14, fontFamily: Fonts.sans.semiBold, fontWeight: '600', color: theme.textSecondary, marginBottom: Spacing.two },
+  orderButton: {
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 9,
     borderWidth: 1,
     borderColor: theme.border,
+    borderRadius: 12,
+    backgroundColor: theme.backgroundElement,
   },
-  conditionTitle: { fontSize: 15, fontFamily: Fonts.sans.semiBold, fontWeight: '600', color: theme.text },
-  sourceBadge: { backgroundColor: theme.surfaceMuted, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
-  sourceText: { fontSize: 10, fontFamily: Fonts.sans.semiBold, fontWeight: '600', color: theme.textSecondary, textTransform: 'uppercase' },
-  conditionType: { fontSize: 12, fontFamily: Fonts.sans.regular, color: theme.textSecondary, marginTop: 4 },
-  conditionDate: { fontSize: 11, fontFamily: Fonts.sans.regular, color: theme.textTertiary, marginTop: 2 },
+  orderButtonLabel: { fontSize: 10, fontFamily: Fonts.sans.medium, color: theme.textTertiary },
+  orderButtonValue: { fontSize: 11, fontFamily: Fonts.sans.semiBold, fontWeight: '600', color: theme.tintStrong },
+  orderMenu: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 8, marginTop: -8, marginBottom: Spacing.four },
+  orderOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: theme.surfaceMuted,
+  },
+  orderOptionSelected: { backgroundColor: theme.pillGreenBg },
+  orderOptionText: { fontSize: 11, fontFamily: Fonts.sans.medium, color: theme.textSecondary },
+  orderOptionTextSelected: { fontFamily: Fonts.sans.semiBold, fontWeight: '600', color: theme.tintStrong },
+  list: { gap: Spacing.two },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: theme.dangerBg,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 14,
+  },
+  errorText: { flex: 1, fontSize: 13, fontFamily: Fonts.sans.medium, color: theme.danger },
+  addButtonRow: { marginBottom: Spacing.three, alignItems: 'flex-end' },
+  labAddButtonRow: { alignItems: 'center' },
+  prescriptionControlsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: Spacing.three,
+  },
+  prescriptionAddButtonRow: { alignItems: 'flex-end' },
+  filterRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  conditionControlsRow: {
+    flexDirection: 'row',
+    flexWrap: 'nowrap',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: Spacing.three,
+  },
+  conditionFilterSection: { flexShrink: 1, minWidth: 0 },
+  conditionFilterRow: { flexDirection: 'row', flexWrap: 'nowrap', gap: 4 },
+  conditionFilterPill: { paddingHorizontal: 6 },
+  conditionFilterText: { fontSize: 11 },
+  conditionAddButtonWrap: { minWidth: 156 },
+  filterPill: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, backgroundColor: theme.surfaceMuted },
+  filterPillActive: { backgroundColor: theme.pillGreenBg },
+  filterLabel: { fontSize: 12, fontFamily: Fonts.sans.semiBold, fontWeight: '600', color: theme.textSecondary },
+  filterLabelActive: { color: theme.pillGreenText },
+  groupSection: { marginBottom: Spacing.five },
+  groupHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.two },
+  groupHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  groupDot: { width: 10, height: 10, borderRadius: 5 },
+  groupTitle: { fontSize: 15, fontFamily: Fonts.sans.bold, fontWeight: '700', color: theme.text },
+  groupCountPill: { minWidth: 24, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 7 },
+  groupCountText: { fontSize: 12, fontFamily: Fonts.sans.semiBold, fontWeight: '600' },
+  groupEmptyText: { fontSize: 13, fontFamily: Fonts.sans.regular, color: theme.textTertiary, paddingVertical: 8 },
+  seeAllButton: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: Spacing.two, paddingVertical: 4 },
+  seeAllText: { fontSize: 13, fontFamily: Fonts.sans.semiBold, fontWeight: '600' },
 });
