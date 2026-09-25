@@ -108,7 +108,7 @@ const styles = StyleSheet.create({
     height: 96,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 24,
+    marginBottom: 12,
   },
   appTitle: {
     fontSize: 30,

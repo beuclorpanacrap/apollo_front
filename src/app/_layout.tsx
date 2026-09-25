@@ -27,6 +27,7 @@ import { Poppins_800ExtraBold } from '@expo-google-fonts/poppins';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { AuthProvider, useAuth } from '@/context/auth-context';
+import { VaultProvider } from '@/context/vault-context';
 import { Colors } from '@/constants/theme';
 
 SplashScreen.preventAutoHideAsync();
@@ -110,12 +111,14 @@ export default function RootLayout() {
 
   return (
     <AuthProvider>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <AnimatedSplashOverlay />
-        <WebFrameContainer>
-          <RouteGuard />
-        </WebFrameContainer>
-      </ThemeProvider>
+      <VaultProvider>
+        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+          <AnimatedSplashOverlay />
+          <WebFrameContainer>
+            <RouteGuard />
+          </WebFrameContainer>
+        </ThemeProvider>
+      </VaultProvider>
     </AuthProvider>
   );
 }
