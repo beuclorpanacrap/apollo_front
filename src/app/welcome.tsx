@@ -89,8 +89,8 @@ const createStyles = (theme: AppTheme) =>
   },
   container: {
     flex: 1,
-    paddingHorizontal: 24,
-    paddingVertical: 24,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
     justifyContent: 'center',
     maxWidth: 500,
     alignSelf: 'center',

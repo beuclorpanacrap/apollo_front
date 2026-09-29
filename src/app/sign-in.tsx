@@ -152,7 +152,7 @@ const createStyles = (theme: AppTheme) =>
   container: {
     flexGrow: 1,
     justifyContent: "center",
-    paddingHorizontal: 24,
+    paddingHorizontal: 12,
     paddingTop: 40,
     paddingBottom: 90,
     maxWidth: 500,

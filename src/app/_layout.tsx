@@ -28,13 +28,20 @@ import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { AuthProvider, useAuth } from '@/context/auth-context';
 import { AppThemeProvider, useThemeContext } from '@/context/theme-context';
 import { VaultProvider } from '@/context/vault-context';
-import { Colors } from '@/constants/theme';
+import { BrandColors } from '@/constants/theme';
 
 SplashScreen.preventAutoHideAsync();
+
+// Cream (#FAF4E3) in light mode; dark mode keeps its own palette background.
+function useAppBackground() {
+  const { theme, isDark } = useThemeContext();
+  return isDark ? theme.background : BrandColors.cream;
+}
 
 function RouteGuard() {
   const { isAuthenticated, isLoading } = useAuth();
   const { theme } = useThemeContext();
+  const background = useAppBackground();
   const segments = useSegments();
   const router = useRouter();
 
@@ -64,7 +71,7 @@ function RouteGuard() {
 
   if (isLoading) {
     return (
-      <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
+      <View style={[styles.loadingContainer, { backgroundColor: background }]}>
         <ActivityIndicator size="large" color={theme.tint} />
       </View>
     );
@@ -74,7 +81,7 @@ function RouteGuard() {
     <Stack
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: theme.background },
+        contentStyle: { backgroundColor: background },
       }}
     >
       <Stack.Screen name="welcome" />
@@ -89,10 +96,11 @@ function RouteGuard() {
 
 function WebFrameContainer({ children }: { children: React.ReactNode }) {
   const { theme } = useThemeContext();
+  const background = useAppBackground();
   if (Platform.OS === 'web') {
     return (
       <View style={[styles.webOuter, { backgroundColor: theme.surfaceMuted }]}>
-        <View style={[styles.webFrame, { backgroundColor: theme.background, borderColor: theme.border }]}>
+        <View style={[styles.webFrame, { backgroundColor: background, borderColor: theme.border }]}>
           {children}
         </View>
       </View>
@@ -103,6 +111,7 @@ function WebFrameContainer({ children }: { children: React.ReactNode }) {
 
 function ThemedNavigationRoot() {
   const { theme, isDark } = useThemeContext();
+  const background = useAppBackground();
 
   const baseTheme = isDark ? DarkTheme : DefaultTheme;
   const navigationTheme = {
@@ -111,7 +120,7 @@ function ThemedNavigationRoot() {
     colors: {
       ...baseTheme.colors,
       primary: theme.tint,
-      background: theme.background,
+      background,
       card: theme.backgroundElement,
       text: theme.text,
       border: theme.border,

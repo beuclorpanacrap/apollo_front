@@ -241,7 +241,7 @@ const createStyles = (theme: AppTheme) =>
   },
   container: {
     flexGrow: 1,
-    paddingHorizontal: 24,
+    paddingHorizontal: 12,
     paddingTop: 40,
     paddingBottom: 40,
     maxWidth: 500,
