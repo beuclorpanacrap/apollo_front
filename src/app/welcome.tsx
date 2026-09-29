@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   Platform,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,25 +13,14 @@ import { useRouter } from 'expo-router';
 import { AppMark } from '@/components/app-mark';
 import { AppTheme, Colors, Fonts } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { useDoctorRegistration } from '@/hooks/use-doctor-registration';
 
 export default function WelcomeScreen() {
   const theme = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const router = useRouter();
 
-  const handleClinicianPortal = () => {
-    if (Platform.OS === 'web') {
-      window.alert(
-        'Clinician Portal: Clinicians must use their verified medical license credentials to log into the doctor workstation.'
-      );
-    } else {
-      Alert.alert(
-        'Clinician Portal',
-        'Clinicians must use their verified medical license credentials to log into the doctor workstation.'
-      );
-    }
-    router.push('/sign-in');
-  };
+  const handleClinicianPortal = useDoctorRegistration();
 
   return (
     <SafeAreaView style={styles.safeArea}>

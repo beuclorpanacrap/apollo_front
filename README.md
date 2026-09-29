@@ -34,6 +34,17 @@ npx expo start
 npx expo start --web
 ```
 
+### Doctor registration during development
+
+The doctor website is part of this Expo project. Run `npm run web` and open
+the mobile app from the same Expo development server (keep your phone and
+computer on the same network). Selecting Doctor in the mobile app opens
+`/register-doctor` in the phone's browser using that server's address.
+Selecting Doctor on web navigates directly to the registration form.
+
+For a deployed build, set `EXPO_PUBLIC_WEB_BASE_URL` to the frontend website's
+HTTPS origin before building the app. This is separate from the backend API URL.
+
 ### Type Checking & Build Verification
 ```bash
 # Type check

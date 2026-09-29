@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { authApi, CurrentUserResponse, LoginRequest, RegisterPatientRequest } from '@/api/auth.api';
+import { authApi, CurrentUserResponse, LoginRequest, RegisterPatientRequest, RegisterDoctorRequest } from '@/api/auth.api';
 import { getAuthToken, removeAuthToken } from '@/api/client';
 
 interface AuthContextType {
@@ -9,6 +9,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   login: (credentials: LoginRequest) => Promise<CurrentUserResponse>;
   registerPatient: (request: RegisterPatientRequest) => Promise<CurrentUserResponse>;
+  registerDoctor: (request: RegisterDoctorRequest) => Promise<CurrentUserResponse>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
   updateUserLocally: (partial: Partial<CurrentUserResponse>) => void;
@@ -67,6 +68,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return me;
   };
 
+  const registerDoctor = async (request: RegisterDoctorRequest): Promise<CurrentUserResponse> => {
+    const authRes = await authApi.registerDoctor(request);
+    try {
+      if (!authRes.token) throw new Error('Missing registration token');
+      const me = await authApi.getMe();
+      if (me.role !== 'ROLE_DOCTOR') throw new Error('Unexpected account role');
+      setToken(authRes.token);
+      setUser(me);
+      return me;
+    } catch {
+      await removeAuthToken();
+      setToken(null);
+      setUser(null);
+      throw new Error('Your account was created, but automatic sign-in could not finish. Please sign in with your new credentials.');
+    }
+  };
+
   const logout = async () => {
     try {
       await authApi.logout();
@@ -89,6 +107,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isAuthenticated: !!user && !!token,
         login,
         registerPatient,
+        registerDoctor,
         logout,
         refreshUser,
         updateUserLocally,
