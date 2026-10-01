@@ -10,6 +10,11 @@ export type UpdatePatientProfileRequest = components['schemas']['UpdatePatientPr
 export type PatientProfileResponse = components['schemas']['PatientProfileResponse'];
 export type BaselineConditionItem = components['schemas']['BaselineConditionItem'];
 export type SyncBaselineConditionsRequest = components['schemas']['SyncBaselineConditionsRequest'];
+export type PatientVaultTimelineResponse = components['schemas']['PatientVaultTimelineResponse'];
+// Note: the timeline's `encounters` array is typed as ClinicalEncounterSummaryDto,
+// not ClinicalEncounterResponse (a separate, fuller schema used elsewhere) —
+// see LOCAL_BRIDGE_NOTES.md.
+export type ClinicalEncounterSummaryDto = components['schemas']['ClinicalEncounterSummaryDto'];
 
 export const vaultApi = {
   /**
@@ -50,6 +55,17 @@ export const vaultApi = {
     });
   },
 
+  /** Marks a patient-owned prescription as fulfilled. */
+  async updatePrescriptionStatus(
+    prescriptionId: string,
+    status: 'ACTIVE' | 'FULFILLED' | 'CANCELLED'
+  ): Promise<PrescriptionResponse> {
+    return apiClient<PrescriptionResponse>(`/api/v1/prescriptions/${encodeURIComponent(prescriptionId)}/status`, {
+      method: 'PATCH',
+      body: { status },
+    });
+  },
+
   /**
    * Retrieves time-series lab test results sorted chronologically ascending.
    */
@@ -57,6 +73,19 @@ export const vaultApi = {
     return apiClient<LabTestResultResponse[]>('/api/v1/patient/vault/test-results', {
       method: 'GET',
       params: testName ? { testName } : undefined,
+    });
+  },
+
+  /**
+   * Retrieves the consolidated chronological vault view (profile + conditions +
+   * clinical encounters). Previously unused by this app — Home used to fake its
+   * timeline from getConditions() alone, which is why doctor visits never
+   * showed up anywhere. Now the source of truth for both Home's timeline and
+   * the Vault's Visits tab.
+   */
+  async getTimeline(): Promise<PatientVaultTimelineResponse> {
+    return apiClient<PatientVaultTimelineResponse>('/api/v1/patient/vault/timeline', {
+      method: 'GET',
     });
   },
 

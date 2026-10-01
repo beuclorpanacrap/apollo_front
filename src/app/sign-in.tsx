@@ -148,7 +148,7 @@ const createStyles = (theme: AppTheme) =>
   container: {
     flexGrow: 1,
     justifyContent: "center",
-    paddingHorizontal: 24,
+    paddingHorizontal: 12,
     paddingTop: 40,
     paddingBottom: 90,
     maxWidth: 500,
@@ -161,7 +161,7 @@ const createStyles = (theme: AppTheme) =>
     alignSelf: "center",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 24,
+    marginBottom: 12,
   },
   title: {
     fontSize: 26,
