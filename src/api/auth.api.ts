@@ -4,7 +4,12 @@ import { components } from './types';
 export type AuthResponse = components['schemas']['AuthResponse'];
 export type LoginRequest = components['schemas']['LoginRequest'];
 export type RegisterPatientRequest = components['schemas']['RegisterPatientRequest'];
-export type CurrentUserResponse = components['schemas']['CurrentUserResponse'];
+export type RegisterDoctorRequest = components['schemas']['RegisterDoctorRequest'];
+export type CurrentUserResponse = components['schemas']['CurrentUserResponse'] & {
+  specialty?: string;
+  doctorRole?: components['schemas']['RegisterDoctorRequest']['doctorRole'];
+  licenseNumber?: string;
+};
 
 export const authApi = {
   async login(credentials: LoginRequest): Promise<AuthResponse> {
@@ -26,6 +31,15 @@ export const authApi = {
     if (data.token) {
       await setAuthToken(data.token);
     }
+    return data;
+  },
+
+  async registerDoctor(request: RegisterDoctorRequest): Promise<AuthResponse> {
+    const data = await apiClient<AuthResponse>('/api/v1/auth/register/doctor', {
+      method: 'POST',
+      body: request,
+    });
+    if (data.token) await setAuthToken(data.token);
     return data;
   },
 

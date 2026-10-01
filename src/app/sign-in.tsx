@@ -39,11 +39,7 @@ export default function SignInScreen() {
     try {
       setIsSubmitting(true);
       const user = await login({ email: email.trim(), password });
-      if (user.role !== "ROLE_PATIENT") {
-        // Still allow entry or show doctor note
-        console.log(`[SignIn] Logged in as ${user.role}`);
-      }
-      router.replace("/(tabs)");
+      router.replace(user.role === 'ROLE_DOCTOR' ? '/doctor' : '/(tabs)');
     } catch (err: any) {
       setErrorMessage(
         err.message || "Login failed. Please verify credentials.",

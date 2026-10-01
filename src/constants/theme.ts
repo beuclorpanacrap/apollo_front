@@ -30,6 +30,7 @@ const brand = {
 } as const;
 
 export const BrandColors = brand;
+export const ClinicianColors = { background: '#F8FAFC', overlay: '#00000066' } as const;
 
 export const Colors = {
   light: {

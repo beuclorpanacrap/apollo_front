@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+﻿import React, { useEffect } from 'react';
 import {
   DarkTheme,
   DefaultTheme,
@@ -39,7 +39,7 @@ function useAppBackground() {
 }
 
 function RouteGuard() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
   const { theme } = useThemeContext();
   const background = useAppBackground();
   const segments = useSegments();
@@ -52,22 +52,26 @@ function RouteGuard() {
     const inAuthFlow =
       firstSegment === 'welcome' ||
       firstSegment === 'sign-in' ||
-      firstSegment === 'sign-up';
+      firstSegment === 'sign-up' ||
+      firstSegment === 'register-patient' ||
+      firstSegment === 'register-doctor';
 
     if (!isAuthenticated && !inAuthFlow) {
       router.replace('/welcome');
-    } else if (isAuthenticated && inAuthFlow) {
-      if (firstSegment === 'sign-up') {
+    } else if (isAuthenticated && user?.role === 'ROLE_DOCTOR') {
+      if (firstSegment !== 'doctor' && firstSegment !== 'doctor-vault' && firstSegment !== 'doctor-profile') router.replace('/doctor');
+    } else if (isAuthenticated && (inAuthFlow || firstSegment === 'doctor' || firstSegment === 'doctor-vault' || firstSegment === 'doctor-profile')) {
+      if (firstSegment === 'register-patient') {
         // Send newly registered users straight into the baseline survey.
         router.replace('/onboarding');
       } else {
         router.replace('/(tabs)');
       }
     }
-    // Note: deliberately not redirecting away from /onboarding here — a
+    // Note: deliberately not redirecting away from /onboarding here â€” a
     // signed-in user must be able to stay on it (first-run survey, or
     // revisiting it later from the Documentation tab to update their baseline).
-  }, [isAuthenticated, isLoading, segments]);
+  }, [isAuthenticated, isLoading, segments, user?.role, router]);
 
   if (isLoading) {
     return (
@@ -85,11 +89,18 @@ function RouteGuard() {
       }}
     >
       <Stack.Screen name="welcome" />
-      <Stack.Screen name="onboarding" />
-      <Stack.Screen name="(tabs)" />
-      <Stack.Screen name="settings" />
+      <Stack.Protected guard={isAuthenticated && user?.role !== 'ROLE_DOCTOR'}>
+        <Stack.Screen name="onboarding" />
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="settings" />
+      </Stack.Protected>
       <Stack.Screen name="sign-in" options={{ presentation: 'modal' }} />
       <Stack.Screen name="sign-up" options={{ presentation: 'modal' }} />
+      <Stack.Screen name="register-patient" />
+      <Stack.Screen name="register-doctor" />
+      <Stack.Screen name="doctor" />
+      <Stack.Screen name="doctor-vault" />
+      <Stack.Screen name="doctor-profile" />
     </Stack>
   );
 }
