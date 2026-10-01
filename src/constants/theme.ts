@@ -94,6 +94,7 @@ export const Colors = {
 } as const;
 
 export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
+export type AppTheme = { [Key in ThemeColor]: string };
 
 /**
  * Two type families, used deliberately:
