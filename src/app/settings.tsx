@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -16,11 +16,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/context/auth-context';
-import { useThemeContext } from '@/hooks/use-theme';
 import { ThemeMode } from '@/context/theme-context';
 import { ThemedDatePicker } from '@/components/themed-date-picker';
 import { vaultApi } from '@/api/vault.api';
-import { AppTheme } from '@/constants/theme';
+import { AppTheme, Fonts } from '@/constants/theme';
+import { useThemeContext } from '@/hooks/use-theme';
 
 interface PolicyModalContent {
   title: string;
@@ -29,11 +29,10 @@ interface PolicyModalContent {
 }
 
 export default function SettingsScreen() {
+  const { theme, isDark, themeMode, setThemeMode } = useThemeContext();
+  const styles = useMemo(() => createStyles(theme, isDark), [theme, isDark]);
   const router = useRouter();
   const { user, logout, refreshUser, updateUserLocally } = useAuth();
-  const { theme, themeMode, setThemeMode, isDark } = useThemeContext();
-  const styles = useMemo(() => createStyles(theme, isDark), [theme, isDark]);
-  const badgeIconColor = isDark ? '#34D399' : '#246B44';
 
   const parseIsoDate = (iso?: string | null): Date | null => {
     if (!iso) return null;
@@ -225,314 +224,207 @@ export default function SettingsScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
-      {/* Top Header */}
-      <View
-        style={[
-          styles.header,
-          {
-            backgroundColor: theme.backgroundElement,
-            borderBottomColor: theme.border,
-          },
-        ]}
-      >
-        <TouchableOpacity
-          onPress={handleBack}
-          style={[styles.backButton, { backgroundColor: theme.surfaceMuted }]}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="arrow-back" size={22} color={theme.text} />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>Settings</Text>
-        <View style={styles.headerSpacer} />
-      </View>
-
+    <SafeAreaView style={styles.safeArea}>
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.container}>
-          {/* Section 1: Account & Profile */}
-          <Text style={[styles.sectionHeader, { color: theme.textSecondary }]}>
-            ACCOUNT & PROFILE
-          </Text>
-          <View
-            style={[
-              styles.card,
-              {
-                backgroundColor: theme.backgroundElement,
-                borderColor: theme.border,
-              },
-            ]}
+        {/* Top Header Card */}
+        <View style={styles.headerRow}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={handleBack}
+            activeOpacity={0.7}
           >
-            {/* Full Name Row */}
-            <TouchableOpacity
-              style={styles.interactiveRow}
-              onPress={openNameModal}
-              activeOpacity={0.7}
-            >
-              <View style={styles.iconBadge}>
-                <Ionicons name="person-outline" size={20} color={badgeIconColor} />
-              </View>
-              <View style={styles.rowContent}>
-                <Text style={[styles.rowLabel, { color: theme.textSecondary }]}>Full Name</Text>
-                <Text style={[styles.rowValue, { color: theme.text }]}>
-                  {user?.fullName || 'Patient'}
-                </Text>
-              </View>
-              <Ionicons name="create-outline" size={18} color={theme.textTertiary} />
-            </TouchableOpacity>
-
-            <View style={[styles.divider, { backgroundColor: theme.border }]} />
-
-            {/* Email Address Row */}
-            <TouchableOpacity
-              style={styles.interactiveRow}
-              onPress={openEmailModal}
-              activeOpacity={0.7}
-            >
-              <View style={styles.iconBadge}>
-                <Ionicons name="mail-outline" size={20} color={badgeIconColor} />
-              </View>
-              <View style={styles.rowContent}>
-                <Text style={[styles.rowLabel, { color: theme.textSecondary }]}>Email Address</Text>
-                <Text style={[styles.rowValue, { color: theme.text }]}>
-                  {user?.email || '—'}
-                </Text>
-              </View>
-              <Ionicons name="create-outline" size={18} color={theme.textTertiary} />
-            </TouchableOpacity>
-
-            <View style={[styles.divider, { backgroundColor: theme.border }]} />
-
-            {/* Date of Birth Row */}
-            <TouchableOpacity
-              style={styles.interactiveRow}
-              onPress={() => setShowDatePicker(true)}
-              activeOpacity={0.7}
-            >
-              <View style={styles.iconBadge}>
-                <Ionicons name="calendar-outline" size={20} color={badgeIconColor} />
-              </View>
-              <View style={styles.rowContent}>
-                <Text style={[styles.rowLabel, { color: theme.textSecondary }]}>Date of Birth</Text>
-                <Text style={[styles.rowValue, { color: theme.text }]}>
-                  {user?.dateOfBirth || 'Select date'}
-                </Text>
-              </View>
-              <Ionicons name="create-outline" size={18} color={theme.textTertiary} />
-            </TouchableOpacity>
+            <Ionicons name="chevron-back" size={22} color={isDark ? theme.text : '#FFFDF7'} />
+          </TouchableOpacity>
+          <View style={styles.headerTitleContainer}>
+            <Text style={styles.headerSubtitle}>Account & Preferences</Text>
+            <Text style={styles.headerTitle}>Settings</Text>
           </View>
+        </View>
 
-          {/* Section 2: Medical Baseline & Data */}
-          <Text style={[styles.sectionHeader, { color: theme.textSecondary }]}>
-            MEDICAL BASELINE & DATA
-          </Text>
-          <View
-            style={[
-              styles.card,
-              {
-                backgroundColor: theme.backgroundElement,
-                borderColor: theme.border,
-              },
-            ]}
-          >
-            <TouchableOpacity
-              style={styles.actionRow}
-              onPress={() => router.push('/onboarding')}
-              activeOpacity={0.7}
-            >
-              <View style={styles.iconBadge}>
-                <Ionicons name="medkit-outline" size={20} color={badgeIconColor} />
-              </View>
-              <View style={styles.rowContent}>
-                <Text style={[styles.actionTitle, { color: theme.text }]}>
-                  Clinical Baseline & Biometrics
-                </Text>
-                <Text style={[styles.actionSubtitle, { color: theme.textSecondary }]}>
-                  Update gender, height, weight, allergies, and habits
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={theme.textTertiary} />
-            </TouchableOpacity>
-
-            <View style={[styles.divider, { backgroundColor: theme.border }]} />
-
-            <TouchableOpacity
-              style={styles.actionRow}
-              onPress={handleExport}
-              activeOpacity={0.7}
-            >
-              <View style={styles.iconBadge}>
-                <Ionicons name="download-outline" size={20} color={badgeIconColor} />
-              </View>
-              <View style={styles.rowContent}>
-                <Text style={[styles.actionTitle, { color: theme.text }]}>Export Health Summary</Text>
-                <Text style={[styles.actionSubtitle, { color: theme.textSecondary }]}>
-                  Download encrypted patient records (PDF/FHIR)
-                </Text>
-              </View>
-              <View style={[styles.comingSoonBadge, { backgroundColor: theme.pillGreenBg }]}>
-                <Text style={[styles.comingSoonText, { color: theme.tint }]}>Soon</Text>
-              </View>
-            </TouchableOpacity>
-          </View>
-
-          {/* Section 3: Preferences */}
-          <Text style={[styles.sectionHeader, { color: theme.textSecondary }]}>PREFERENCES</Text>
-          <View
-            style={[
-              styles.card,
-              {
-                backgroundColor: theme.backgroundElement,
-                borderColor: theme.border,
-              },
-            ]}
-          >
-            <View style={styles.row}>
-              <View style={styles.iconBadge}>
-                <Ionicons name="color-palette-outline" size={20} color={badgeIconColor} />
-              </View>
-              <View style={styles.rowContent}>
-                <Text style={[styles.actionTitle, { color: theme.text }]}>Theme</Text>
-                <Text style={[styles.actionSubtitle, { color: theme.textSecondary }]}>
-                  Appearance display mode
-                </Text>
-              </View>
-              <View
-                style={[
-                  styles.segmentedContainer,
-                  { backgroundColor: theme.surfaceMuted },
-                ]}
-              >
-                {(['System', 'Light', 'Dark'] as ThemeMode[]).map((mode) => {
-                  const isSelected = themeMode === mode;
-                  return (
-                    <TouchableOpacity
-                      key={mode}
-                      style={[
-                        styles.segmentBtn,
-                        isSelected && { backgroundColor: theme.tintStrong },
-                      ]}
-                      onPress={() => setThemeMode(mode)}
-                      activeOpacity={0.8}
-                    >
-                      <Text
-                        style={[
-                          styles.segmentBtnText,
-                          {
-                            color: isSelected ? theme.onTint : theme.textSecondary,
-                            fontWeight: isSelected ? '700' : '500',
-                          },
-                        ]}
-                      >
-                        {mode}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
+        {/* Section 1: Account & Profile */}
+        <Text style={styles.sectionTitle}>Account & Profile</Text>
+        <View style={styles.card}>
+          <TouchableOpacity style={styles.row} onPress={openNameModal} activeOpacity={0.7}>
+            <View style={styles.iconWrapper}>
+              <Ionicons name="person-outline" size={20} color={theme.tintStrong} />
             </View>
+            <View style={styles.rowContent}>
+              <Text style={styles.rowLabel}>Full Name</Text>
+              <Text style={styles.rowValue}>{user?.fullName || 'Patient'}</Text>
+            </View>
+            <Ionicons name="create-outline" size={18} color={theme.textTertiary} />
+          </TouchableOpacity>
 
-            <View style={[styles.divider, { backgroundColor: theme.border }]} />
+          <View style={styles.divider} />
 
-            <View style={styles.row}>
-              <View style={styles.iconBadge}>
-                <Ionicons name="finger-print-outline" size={20} color={badgeIconColor} />
-              </View>
-              <View style={styles.rowContent}>
-                <Text style={[styles.actionTitle, { color: theme.text }]}>Biometric Lock</Text>
-                <Text style={[styles.actionSubtitle, { color: theme.textSecondary }]}>
-                  Require FaceID / TouchID on app launch
-                </Text>
-              </View>
-              <Switch
-                value={biometricsEnabled}
-                onValueChange={setBiometricsEnabled}
-                trackColor={{ false: theme.border, true: theme.pillGreenBg }}
-                thumbColor={biometricsEnabled ? theme.tint : theme.surfaceMuted}
-              />
+          <TouchableOpacity style={styles.row} onPress={openEmailModal} activeOpacity={0.7}>
+            <View style={styles.iconWrapper}>
+              <Ionicons name="mail-outline" size={20} color={theme.tintStrong} />
+            </View>
+            <View style={styles.rowContent}>
+              <Text style={styles.rowLabel}>Email Address</Text>
+              <Text style={styles.rowValue}>{user?.email || '—'}</Text>
+            </View>
+            <Ionicons name="create-outline" size={18} color={theme.textTertiary} />
+          </TouchableOpacity>
+
+          <View style={styles.divider} />
+
+          <TouchableOpacity
+            style={styles.row}
+            onPress={() => setShowDatePicker(true)}
+            activeOpacity={0.7}
+          >
+            <View style={styles.iconWrapper}>
+              <Ionicons name="calendar-outline" size={20} color={theme.tintStrong} />
+            </View>
+            <View style={styles.rowContent}>
+              <Text style={styles.rowLabel}>Date of Birth</Text>
+              <Text style={styles.rowValue}>{user?.dateOfBirth || 'Select date'}</Text>
+            </View>
+            <Ionicons name="create-outline" size={18} color={theme.textTertiary} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Section 2: Medical Baseline & Data */}
+        <Text style={styles.sectionTitle}>Medical Baseline & Data</Text>
+        <View style={styles.card}>
+          <TouchableOpacity
+            style={styles.row}
+            onPress={() => router.push('/onboarding')}
+            activeOpacity={0.7}
+          >
+            <View style={styles.iconWrapper}>
+              <Ionicons name="medkit-outline" size={20} color={theme.tintStrong} />
+            </View>
+            <View style={styles.rowContent}>
+              <Text style={styles.actionTitle}>Clinical Baseline & Biometrics</Text>
+              <Text style={styles.actionSubtitle}>
+                Update gender, height, weight, allergies, and habits
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={theme.textTertiary} />
+          </TouchableOpacity>
+
+          <View style={styles.divider} />
+
+          <TouchableOpacity style={styles.row} onPress={handleExport} activeOpacity={0.7}>
+            <View style={styles.iconWrapper}>
+              <Ionicons name="download-outline" size={20} color={theme.tintStrong} />
+            </View>
+            <View style={styles.rowContent}>
+              <Text style={styles.actionTitle}>Export Health Summary</Text>
+              <Text style={styles.actionSubtitle}>
+                Download encrypted patient records (PDF/FHIR)
+              </Text>
+            </View>
+            <View style={styles.comingSoonBadge}>
+              <Text style={styles.comingSoonText}>Soon</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        {/* Section 3: Preferences */}
+        <Text style={styles.sectionTitle}>Preferences</Text>
+        <View style={styles.card}>
+          <View style={styles.row}>
+            <View style={styles.iconWrapper}>
+              <Ionicons name="color-palette-outline" size={20} color={theme.tintStrong} />
+            </View>
+            <View style={styles.rowContent}>
+              <Text style={styles.actionTitle}>Theme</Text>
+              <Text style={styles.actionSubtitle}>Appearance display mode</Text>
+            </View>
+            <View style={styles.segmentedContainer}>
+              {(['System', 'Light', 'Dark'] as ThemeMode[]).map((mode) => {
+                const isSelected = themeMode === mode;
+                return (
+                  <TouchableOpacity
+                    key={mode}
+                    style={[styles.segmentBtn, isSelected && styles.segmentBtnActive]}
+                    onPress={() => setThemeMode(mode)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={isSelected ? styles.segmentBtnTextActive : styles.segmentBtnText}>
+                      {mode}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </View>
 
-          {/* Section 4: Legal & Policies */}
-          <Text style={[styles.sectionHeader, { color: theme.textSecondary }]}>
-            LEGAL & POLICIES
-          </Text>
-          <View
-            style={[
-              styles.card,
-              {
-                backgroundColor: theme.backgroundElement,
-                borderColor: theme.border,
-              },
-            ]}
-          >
-            <TouchableOpacity
-              style={styles.actionRow}
-              onPress={openPrivacyPolicy}
-              activeOpacity={0.7}
-            >
-              <View style={styles.iconBadge}>
-                <Ionicons name="shield-checkmark-outline" size={20} color={badgeIconColor} />
-              </View>
-              <View style={styles.rowContent}>
-                <Text style={[styles.actionTitle, { color: theme.text }]}>Privacy Policy</Text>
-                <Text style={[styles.actionSubtitle, { color: theme.textSecondary }]}>
-                  Apollo patient data sovereignty commitment
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={theme.textTertiary} />
-            </TouchableOpacity>
+          <View style={styles.divider} />
 
-            <View style={[styles.divider, { backgroundColor: theme.border }]} />
-
-            <TouchableOpacity
-              style={styles.actionRow}
-              onPress={openTermsOfService}
-              activeOpacity={0.7}
-            >
-              <View style={styles.iconBadge}>
-                <Ionicons name="document-text-outline" size={20} color={badgeIconColor} />
-              </View>
-              <View style={styles.rowContent}>
-                <Text style={[styles.actionTitle, { color: theme.text }]}>Terms of Service</Text>
-                <Text style={[styles.actionSubtitle, { color: theme.textSecondary }]}>
-                  Cryptographic records & consultation terms
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={theme.textTertiary} />
-            </TouchableOpacity>
+          <View style={styles.row}>
+            <View style={styles.iconWrapper}>
+              <Ionicons name="finger-print-outline" size={20} color={theme.tintStrong} />
+            </View>
+            <View style={styles.rowContent}>
+              <Text style={styles.actionTitle}>Biometric Lock</Text>
+              <Text style={styles.actionSubtitle}>Require FaceID / TouchID on app launch</Text>
+            </View>
+            <Switch
+              value={biometricsEnabled}
+              onValueChange={setBiometricsEnabled}
+              trackColor={{ false: theme.border, true: theme.pillGreenBg }}
+              thumbColor={biometricsEnabled ? theme.tint : theme.surfaceMuted}
+            />
           </View>
+        </View>
 
-          {/* Section 5: Session Action */}
-          <Text style={[styles.sectionHeader, { color: theme.textSecondary }]}>SESSION</Text>
-          <View
-            style={[
-              styles.card,
-              {
-                backgroundColor: theme.backgroundElement,
-                borderColor: theme.border,
-              },
-            ]}
+        {/* Section 4: Legal & Policies */}
+        <Text style={styles.sectionTitle}>Legal & Policies</Text>
+        <View style={styles.card}>
+          <TouchableOpacity style={styles.row} onPress={openPrivacyPolicy} activeOpacity={0.7}>
+            <View style={styles.iconWrapper}>
+              <Ionicons name="shield-checkmark-outline" size={20} color={theme.tintStrong} />
+            </View>
+            <View style={styles.rowContent}>
+              <Text style={styles.actionTitle}>Privacy Policy</Text>
+              <Text style={styles.actionSubtitle}>
+                Apollo patient data sovereignty commitment
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={theme.textTertiary} />
+          </TouchableOpacity>
+
+          <View style={styles.divider} />
+
+          <TouchableOpacity style={styles.row} onPress={openTermsOfService} activeOpacity={0.7}>
+            <View style={styles.iconWrapper}>
+              <Ionicons name="document-text-outline" size={20} color={theme.tintStrong} />
+            </View>
+            <View style={styles.rowContent}>
+              <Text style={styles.actionTitle}>Terms of Service</Text>
+              <Text style={styles.actionSubtitle}>
+                Cryptographic records & consultation terms
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={theme.textTertiary} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Section 5: Session Action */}
+        <Text style={styles.sectionTitle}>Session</Text>
+        <View style={styles.card}>
+          <TouchableOpacity
+            style={styles.row}
+            onPress={() => setShowLogoutModal(true)}
+            activeOpacity={0.7}
           >
-            <TouchableOpacity
-              style={styles.actionRow}
-              onPress={() => setShowLogoutModal(true)}
-              activeOpacity={0.7}
-            >
-              <View style={[styles.iconBadge, { backgroundColor: isDark ? 'rgba(248, 113, 113, 0.15)' : 'rgba(211, 47, 47, 0.10)' }]}>
-                <Ionicons name="log-out-outline" size={20} color={theme.danger} />
-              </View>
-              <View style={styles.rowContent}>
-                <Text style={[styles.actionTitle, { color: theme.danger }]}>Log Out</Text>
-                <Text style={[styles.actionSubtitle, { color: theme.textSecondary }]}>
-                  Sign out of this device session
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={theme.danger} />
-            </TouchableOpacity>
-          </View>
+            <View style={styles.iconWrapperDanger}>
+              <Ionicons name="log-out-outline" size={20} color={theme.danger} />
+            </View>
+            <View style={styles.rowContent}>
+              <Text style={styles.actionTitleDanger}>Log Out</Text>
+              <Text style={styles.actionSubtitle}>Sign out of this device session</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={theme.danger} />
+          </TouchableOpacity>
         </View>
       </ScrollView>
 
@@ -544,26 +436,19 @@ export default function SettingsScreen() {
         onRequestClose={() => !isSavingName && setShowNameModal(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={[styles.dialogCard, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
+          <View style={styles.dialogCard}>
             <View style={styles.dialogIconWrapper}>
-              <Ionicons name="person-outline" size={24} color={badgeIconColor} />
+              <Ionicons name="person-outline" size={24} color={theme.tintStrong} />
             </View>
-            <Text style={[styles.dialogTitle, { color: theme.text }]}>Edit Full Name</Text>
-            <Text style={[styles.dialogMessage, { color: theme.textSecondary }]}>
+            <Text style={styles.dialogTitle}>Edit Full Name</Text>
+            <Text style={styles.dialogMessage}>
               Update your preferred name on your medical vault records.
             </Text>
 
             <View style={styles.inputGroup}>
-              <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>First Name</Text>
+              <Text style={styles.inputLabel}>First Name</Text>
               <TextInput
-                style={[
-                  styles.textInput,
-                  {
-                    backgroundColor: theme.background,
-                    borderColor: theme.border,
-                    color: theme.text,
-                  },
-                ]}
+                style={styles.textInput}
                 placeholder="First name"
                 placeholderTextColor={theme.textTertiary}
                 value={firstNameInput}
@@ -574,16 +459,9 @@ export default function SettingsScreen() {
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>Last Name</Text>
+              <Text style={styles.inputLabel}>Last Name</Text>
               <TextInput
-                style={[
-                  styles.textInput,
-                  {
-                    backgroundColor: theme.background,
-                    borderColor: theme.border,
-                    color: theme.text,
-                  },
-                ]}
+                style={styles.textInput}
                 placeholder="Last name"
                 placeholderTextColor={theme.textTertiary}
                 value={lastNameInput}
@@ -592,27 +470,27 @@ export default function SettingsScreen() {
               />
             </View>
 
-            {nameError && <Text style={[styles.errorText, { color: theme.danger }]}>{nameError}</Text>}
+            {nameError && <Text style={styles.errorText}>{nameError}</Text>}
 
             <View style={styles.dialogActions}>
               <TouchableOpacity
-                style={[styles.cancelButton, { backgroundColor: theme.surfaceMuted }]}
+                style={styles.cancelBtn}
                 onPress={() => setShowNameModal(false)}
                 disabled={isSavingName}
                 activeOpacity={0.7}
               >
-                <Text style={[styles.cancelButtonText, { color: theme.textSecondary }]}>Cancel</Text>
+                <Text style={styles.cancelBtnText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.saveButton, { backgroundColor: theme.tintStrong }]}
+                style={styles.saveBtn}
                 onPress={handleSaveName}
                 disabled={isSavingName}
                 activeOpacity={0.8}
               >
                 {isSavingName ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
+                  <ActivityIndicator size="small" color={theme.onTint} />
                 ) : (
-                  <Text style={[styles.saveButtonText, { color: theme.onTint }]}>Save</Text>
+                  <Text style={styles.saveBtnText}>Save</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -628,26 +506,19 @@ export default function SettingsScreen() {
         onRequestClose={() => !isSavingEmail && setShowEmailModal(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={[styles.dialogCard, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
+          <View style={styles.dialogCard}>
             <View style={styles.dialogIconWrapper}>
-              <Ionicons name="mail-outline" size={24} color={badgeIconColor} />
+              <Ionicons name="mail-outline" size={24} color={theme.tintStrong} />
             </View>
-            <Text style={[styles.dialogTitle, { color: theme.text }]}>Edit Email Address</Text>
-            <Text style={[styles.dialogMessage, { color: theme.textSecondary }]}>
+            <Text style={styles.dialogTitle}>Edit Email Address</Text>
+            <Text style={styles.dialogMessage}>
               Update the email address associated with your account.
             </Text>
 
             <View style={styles.inputGroup}>
-              <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>Email Address</Text>
+              <Text style={styles.inputLabel}>Email Address</Text>
               <TextInput
-                style={[
-                  styles.textInput,
-                  {
-                    backgroundColor: theme.background,
-                    borderColor: theme.border,
-                    color: theme.text,
-                  },
-                ]}
+                style={styles.textInput}
                 placeholder="you@example.com"
                 placeholderTextColor={theme.textTertiary}
                 value={emailInput}
@@ -659,27 +530,27 @@ export default function SettingsScreen() {
               />
             </View>
 
-            {emailError && <Text style={[styles.errorText, { color: theme.danger }]}>{emailError}</Text>}
+            {emailError && <Text style={styles.errorText}>{emailError}</Text>}
 
             <View style={styles.dialogActions}>
               <TouchableOpacity
-                style={[styles.cancelButton, { backgroundColor: theme.surfaceMuted }]}
+                style={styles.cancelBtn}
                 onPress={() => setShowEmailModal(false)}
                 disabled={isSavingEmail}
                 activeOpacity={0.7}
               >
-                <Text style={[styles.cancelButtonText, { color: theme.textSecondary }]}>Cancel</Text>
+                <Text style={styles.cancelBtnText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.saveButton, { backgroundColor: theme.tintStrong }]}
+                style={styles.saveBtn}
                 onPress={handleSaveEmail}
                 disabled={isSavingEmail}
                 activeOpacity={0.8}
               >
                 {isSavingEmail ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
+                  <ActivityIndicator size="small" color={theme.onTint} />
                 ) : (
-                  <Text style={[styles.saveButtonText, { color: theme.onTint }]}>Save</Text>
+                  <Text style={styles.saveBtnText}>Save</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -687,10 +558,10 @@ export default function SettingsScreen() {
         </View>
       </Modal>
 
-      {/* Themed Date Picker for Date of Birth */}
+      {/* Date of Birth Picker */}
       <ThemedDatePicker
         visible={showDatePicker}
-        value={user?.dateOfBirth ? new Date(`${user.dateOfBirth}T12:00:00`) : null}
+        value={parseIsoDate(user?.dateOfBirth)}
         maximumDate={new Date()}
         onClose={() => setShowDatePicker(false)}
         onChange={handleDateSelect}
@@ -704,28 +575,28 @@ export default function SettingsScreen() {
         onRequestClose={() => setShowLogoutModal(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={[styles.dialogCard, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
-            <View style={[styles.dialogIconWrapper, { backgroundColor: theme.dangerBg }]}>
+          <View style={styles.dialogCard}>
+            <View style={styles.dialogIconWrapperDanger}>
               <Ionicons name="log-out-outline" size={26} color={theme.danger} />
             </View>
-            <Text style={[styles.dialogTitle, { color: theme.text }]}>Sign Out?</Text>
-            <Text style={[styles.dialogMessage, { color: theme.textSecondary }]}>
+            <Text style={styles.dialogTitle}>Sign Out?</Text>
+            <Text style={styles.dialogMessage}>
               Are you sure you want to log out of your Apollo health vault on this device?
             </Text>
             <View style={styles.dialogActions}>
               <TouchableOpacity
-                style={[styles.cancelButton, { backgroundColor: theme.surfaceMuted }]}
+                style={styles.cancelBtn}
                 onPress={() => setShowLogoutModal(false)}
                 activeOpacity={0.7}
               >
-                <Text style={[styles.cancelButtonText, { color: theme.textSecondary }]}>Cancel</Text>
+                <Text style={styles.cancelBtnText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.logoutButton, { backgroundColor: theme.danger }]}
+                style={styles.logoutBtn}
                 onPress={handleConfirmLogout}
                 activeOpacity={0.8}
               >
-                <Text style={styles.logoutButtonText}>Log Out</Text>
+                <Text style={styles.logoutBtnText}>Log Out</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -740,20 +611,11 @@ export default function SettingsScreen() {
         onRequestClose={() => setPolicyModal(null)}
       >
         <View style={styles.modalOverlay}>
-          <View
-            style={[
-              styles.policyDialogCard,
-              { backgroundColor: theme.backgroundElement, borderColor: theme.border },
-            ]}
-          >
-            <View style={[styles.policyHeader, { borderBottomColor: theme.border }]}>
+          <View style={styles.policyDialogCard}>
+            <View style={styles.policyHeader}>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.policyTitle, { color: theme.text }]}>
-                  {policyModal?.title}
-                </Text>
-                <Text style={[styles.policySubtitle, { color: theme.textSecondary }]}>
-                  {policyModal?.subtitle}
-                </Text>
+                <Text style={styles.policyTitle}>{policyModal?.title}</Text>
+                <Text style={styles.policySubtitle}>{policyModal?.subtitle}</Text>
               </View>
               <TouchableOpacity
                 onPress={() => setPolicyModal(null)}
@@ -764,344 +626,422 @@ export default function SettingsScreen() {
               </TouchableOpacity>
             </View>
 
-            <ScrollView
-              style={styles.policyScroll}
-              showsVerticalScrollIndicator={false}
-            >
+            <ScrollView style={styles.policyScroll} showsVerticalScrollIndicator={false}>
               {policyModal?.sections.map((sec, idx) => (
                 <View key={idx} style={styles.policySection}>
-                  <Text style={[styles.policySectionHeading, { color: theme.text }]}>
-                    {sec.heading}
-                  </Text>
-                  <Text style={[styles.policySectionBody, { color: theme.textSecondary }]}>
-                    {sec.body}
-                  </Text>
+                  <Text style={styles.policySectionHeading}>{sec.heading}</Text>
+                  <Text style={styles.policySectionBody}>{sec.body}</Text>
                 </View>
               ))}
             </ScrollView>
 
             <TouchableOpacity
-              style={[styles.policyDoneBtn, { backgroundColor: theme.tintStrong }]}
+              style={styles.policyDoneBtn}
               onPress={() => setPolicyModal(null)}
               activeOpacity={0.8}
             >
-              <Text style={[styles.policyDoneBtnText, { color: theme.onTint }]}>Understood</Text>
+              <Text style={styles.policyDoneBtnText}>Understood</Text>
             </TouchableOpacity>
           </View>
         </View>
       </Modal>
-
-      {/* Date of Birth Picker Modal */}
-      <ThemedDatePicker
-        visible={showDatePicker}
-        value={parseIsoDate(user?.dateOfBirth)}
-        onClose={() => setShowDatePicker(false)}
-        onChange={handleDateSelect}
-        maximumDate={new Date()}
-      />
     </SafeAreaView>
   );
 }
 
 const createStyles = (theme: AppTheme, isDark: boolean) =>
   StyleSheet.create({
-  safeArea: {
-    flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  headerSpacer: {
-    width: 40,
-  },
-  scrollContent: {
-    paddingVertical: 20,
-    paddingHorizontal: 16,
-  },
-  container: {
-    maxWidth: 520,
-    width: '100%',
-    alignSelf: 'center',
-  },
-  sectionHeader: {
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.6,
-    marginBottom: 8,
-    marginLeft: 4,
-  },
-  card: {
-    borderRadius: 18,
-    borderWidth: 1,
-    marginBottom: 22,
-    overflow: 'hidden',
-    ...Platform.select({
-      web: {
-        boxShadow: '0 2px 10px rgba(0, 0, 0, 0.04)',
-      },
-      default: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.04,
-        shadowRadius: 6,
-        elevation: 1,
-      },
-    }),
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 13,
-    paddingHorizontal: 16,
-    gap: 12,
-  },
-  interactiveRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 13,
-    paddingHorizontal: 16,
-    gap: 12,
-  },
-  actionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 13,
-    paddingHorizontal: 16,
-    gap: 12,
-  },
-  iconBadge: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: isDark ? 'rgba(52, 211, 153, 0.12)' : 'rgba(36, 107, 68, 0.10)',
-  },
-  rowContent: {
-    flex: 1,
-  },
-  rowLabel: {
-    fontSize: 12,
-    fontWeight: '500',
-    marginBottom: 2,
-  },
-  rowValue: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  actionTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  actionSubtitle: {
-    fontSize: 12,
-    marginTop: 2,
-    lineHeight: 16,
-  },
-  divider: {
-    height: 1,
-    marginLeft: 64,
-  },
-  comingSoonBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  comingSoonText: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  segmentedContainer: {
-    flexDirection: 'row',
-    borderRadius: 8,
-    padding: 2,
-    gap: 2,
-  },
-  segmentBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 6,
-  },
-  segmentBtnText: {
-    fontSize: 12,
-  },
-
-  // Modals Overlay & Dialogs
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.55)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
-  },
-  dialogCard: {
-    width: '100%',
-    maxWidth: 380,
-    borderRadius: 20,
-    padding: 24,
-    borderWidth: 1,
-    alignItems: 'center',
-    ...Platform.select({
-      web: {
-        boxShadow: '0 12px 28px rgba(0, 0, 0, 0.18)',
-      },
-      default: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.18,
-        shadowRadius: 20,
-        elevation: 8,
-      },
-    }),
-  },
-  dialogIconWrapper: {
-    width: 52,
-    height: 52,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: isDark ? 'rgba(52, 211, 153, 0.12)' : 'rgba(36, 107, 68, 0.10)',
-    marginBottom: 16,
-  },
-  dialogTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 6,
-  },
-  dialogMessage: {
-    fontSize: 13,
-    textAlign: 'center',
-    lineHeight: 18,
-    marginBottom: 18,
-  },
-  inputGroup: {
-    width: '100%',
-    marginBottom: 12,
-  },
-  inputLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginBottom: 4,
-    marginLeft: 2,
-  },
-  textInput: {
-    width: '100%',
-    borderRadius: 10,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14,
-  },
-  errorText: {
-    fontSize: 12,
-    marginTop: 2,
-    marginBottom: 10,
-    textAlign: 'center',
-  },
-  dialogActions: {
-    flexDirection: 'row',
-    gap: 12,
-    width: '100%',
-    marginTop: 8,
-  },
-  cancelButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  cancelButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  saveButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  saveButtonText: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  logoutButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  logoutButtonText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-
-  // Policy Modal
-  policyDialogCard: {
-    width: '100%',
-    maxWidth: 500,
-    maxHeight: '80%',
-    borderRadius: 20,
-    borderWidth: 1,
-    padding: 22,
-  },
-  policyHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    borderBottomWidth: 1,
-    paddingBottom: 14,
-    marginBottom: 14,
-  },
-  policyTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  policySubtitle: {
-    fontSize: 12,
-    marginTop: 2,
-  },
-  policyCloseBtn: {
-    padding: 4,
-    marginLeft: 8,
-  },
-  policyScroll: {
-    marginBottom: 16,
-  },
-  policySection: {
-    marginBottom: 14,
-  },
-  policySectionHeading: {
-    fontSize: 14,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  policySectionBody: {
-    fontSize: 13,
-    lineHeight: 19,
-  },
-  policyDoneBtn: {
-    borderRadius: 12,
-    paddingVertical: 13,
-    alignItems: 'center',
-  },
-  policyDoneBtnText: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
-});
+    safeArea: {
+      flex: 1,
+      backgroundColor: theme.background,
+    },
+    container: {
+      paddingHorizontal: 20,
+      paddingTop: 16,
+      paddingBottom: 32,
+      maxWidth: 600,
+      alignSelf: 'center',
+      width: '100%',
+    },
+    headerRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: isDark ? theme.backgroundElement : theme.tintStrong,
+      borderRadius: 20,
+      paddingHorizontal: 16,
+      paddingVertical: 18,
+      marginBottom: 20,
+      gap: 12,
+      borderWidth: isDark ? 1 : 0,
+      borderColor: isDark ? theme.border : 'transparent',
+    },
+    backButton: {
+      padding: 8,
+      borderRadius: 10,
+      backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.16)',
+      borderWidth: isDark ? 1 : 0,
+      borderColor: isDark ? theme.border : 'transparent',
+    },
+    headerTitleContainer: {
+      flex: 1,
+    },
+    headerSubtitle: {
+      fontSize: 13,
+      fontFamily: Fonts.sans.medium,
+      color: isDark ? '#9CA3AF' : 'rgba(255, 253, 247, 0.8)',
+    },
+    headerTitle: {
+      fontSize: 22,
+      fontFamily: Fonts.display,
+      fontWeight: '800',
+      color: isDark ? '#F9FAFB' : '#FFFDF7',
+      marginTop: 2,
+    },
+    sectionTitle: {
+      fontSize: 15,
+      fontFamily: Fonts.sans.bold,
+      fontWeight: '700',
+      color: theme.text,
+      marginBottom: 8,
+      marginTop: 8,
+    },
+    card: {
+      backgroundColor: theme.backgroundElement,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: theme.border,
+      marginBottom: 20,
+      overflow: 'hidden',
+      ...Platform.select({
+        web: {
+          boxShadow: '0 2px 10px rgba(50, 122, 76, 0.08)',
+        },
+        default: {
+          shadowColor: theme.tintStrong,
+          shadowOpacity: 0.08,
+          shadowOffset: { width: 0, height: 2 },
+          shadowRadius: 10,
+          elevation: 2,
+        },
+      }),
+    },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 13,
+      paddingHorizontal: 16,
+      gap: 12,
+    },
+    iconWrapper: {
+      width: 40,
+      height: 40,
+      borderRadius: 12,
+      backgroundColor: theme.pillGreenBg,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    iconWrapperDanger: {
+      width: 40,
+      height: 40,
+      borderRadius: 12,
+      backgroundColor: theme.dangerBg,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    rowContent: {
+      flex: 1,
+    },
+    rowLabel: {
+      fontSize: 12,
+      fontFamily: Fonts.sans.medium,
+      fontWeight: '500',
+      color: theme.textSecondary,
+      marginBottom: 2,
+    },
+    rowValue: {
+      fontSize: 14,
+      fontFamily: Fonts.sans.semiBold,
+      fontWeight: '600',
+      color: theme.text,
+    },
+    actionTitle: {
+      fontSize: 14,
+      fontFamily: Fonts.sans.semiBold,
+      fontWeight: '600',
+      color: theme.text,
+    },
+    actionTitleDanger: {
+      fontSize: 14,
+      fontFamily: Fonts.sans.semiBold,
+      fontWeight: '600',
+      color: theme.danger,
+    },
+    actionSubtitle: {
+      fontSize: 12,
+      fontFamily: Fonts.sans.regular,
+      color: theme.textSecondary,
+      marginTop: 2,
+      lineHeight: 16,
+    },
+    divider: {
+      height: 1,
+      backgroundColor: theme.border,
+      marginLeft: 64,
+    },
+    comingSoonBadge: {
+      backgroundColor: theme.pillGreenBg,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 6,
+    },
+    comingSoonText: {
+      fontSize: 11,
+      fontFamily: Fonts.sans.bold,
+      fontWeight: '700',
+      color: theme.pillGreenText,
+    },
+    segmentedContainer: {
+      flexDirection: 'row',
+      backgroundColor: theme.surfaceMuted,
+      borderRadius: 8,
+      padding: 2,
+      gap: 2,
+    },
+    segmentBtn: {
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: 6,
+    },
+    segmentBtnActive: {
+      backgroundColor: theme.tintStrong,
+    },
+    segmentBtnText: {
+      fontSize: 12,
+      fontFamily: Fonts.sans.medium,
+      fontWeight: '500',
+      color: theme.textSecondary,
+    },
+    segmentBtnTextActive: {
+      fontSize: 12,
+      fontFamily: Fonts.sans.bold,
+      fontWeight: '700',
+      color: theme.onTint,
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(30, 40, 30, 0.5)',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: 24,
+    },
+    dialogCard: {
+      width: '100%',
+      maxWidth: 380,
+      borderRadius: 16,
+      padding: 24,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.backgroundElement,
+      alignItems: 'center',
+      ...Platform.select({
+        web: {
+          boxShadow: '0 4px 16px rgba(50, 122, 76, 0.16)',
+        },
+        default: {
+          shadowColor: theme.tintStrong,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.16,
+          shadowRadius: 16,
+          elevation: 6,
+        },
+      }),
+    },
+    dialogIconWrapper: {
+      width: 52,
+      height: 52,
+      borderRadius: 26,
+      backgroundColor: theme.pillGreenBg,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 16,
+    },
+    dialogIconWrapperDanger: {
+      width: 52,
+      height: 52,
+      borderRadius: 26,
+      backgroundColor: theme.dangerBg,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 16,
+    },
+    dialogTitle: {
+      fontSize: 18,
+      fontFamily: Fonts.sans.bold,
+      fontWeight: '700',
+      color: theme.text,
+      marginBottom: 8,
+    },
+    dialogMessage: {
+      fontSize: 14,
+      fontFamily: Fonts.sans.regular,
+      color: theme.textSecondary,
+      textAlign: 'center',
+      lineHeight: 20,
+      marginBottom: 24,
+    },
+    inputGroup: {
+      width: '100%',
+      marginBottom: 12,
+    },
+    inputLabel: {
+      fontSize: 12,
+      fontFamily: Fonts.sans.semiBold,
+      fontWeight: '600',
+      color: theme.textSecondary,
+      marginBottom: 4,
+      marginLeft: 2,
+    },
+    textInput: {
+      width: '100%',
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.background,
+      color: theme.text,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      fontSize: 14,
+      fontFamily: Fonts.sans.regular,
+    },
+    errorText: {
+      fontSize: 12,
+      fontFamily: Fonts.sans.medium,
+      color: theme.danger,
+      marginTop: 2,
+      marginBottom: 10,
+      textAlign: 'center',
+    },
+    dialogActions: {
+      flexDirection: 'row',
+      gap: 12,
+      width: '100%',
+    },
+    cancelBtn: {
+      flex: 1,
+      paddingVertical: 12,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: theme.border,
+      alignItems: 'center',
+      backgroundColor: theme.surfaceMuted,
+    },
+    cancelBtnText: {
+      fontSize: 14,
+      fontFamily: Fonts.sans.semiBold,
+      fontWeight: '600',
+      color: theme.text,
+    },
+    saveBtn: {
+      flex: 1,
+      paddingVertical: 12,
+      borderRadius: 10,
+      alignItems: 'center',
+      backgroundColor: theme.tintStrong,
+    },
+    saveBtnText: {
+      fontSize: 14,
+      fontFamily: Fonts.sans.semiBold,
+      fontWeight: '600',
+      color: theme.onTint,
+    },
+    logoutBtn: {
+      flex: 1,
+      paddingVertical: 12,
+      borderRadius: 10,
+      alignItems: 'center',
+      backgroundColor: theme.danger,
+    },
+    logoutBtnText: {
+      fontSize: 14,
+      fontFamily: Fonts.sans.bold,
+      fontWeight: '700',
+      color: '#FFFFFF',
+    },
+    policyDialogCard: {
+      width: '100%',
+      maxWidth: 500,
+      maxHeight: '80%',
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.backgroundElement,
+      padding: 22,
+      ...Platform.select({
+        web: {
+          boxShadow: '0 4px 16px rgba(50, 122, 76, 0.16)',
+        },
+        default: {
+          shadowColor: theme.tintStrong,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.16,
+          shadowRadius: 16,
+          elevation: 6,
+        },
+      }),
+    },
+    policyHeader: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      borderBottomWidth: 1,
+      borderBottomColor: theme.border,
+      paddingBottom: 14,
+      marginBottom: 14,
+    },
+    policyTitle: {
+      fontSize: 18,
+      fontFamily: Fonts.sans.bold,
+      fontWeight: '700',
+      color: theme.text,
+    },
+    policySubtitle: {
+      fontSize: 12,
+      fontFamily: Fonts.sans.regular,
+      color: theme.textSecondary,
+      marginTop: 2,
+    },
+    policyCloseBtn: {
+      padding: 4,
+      marginLeft: 8,
+    },
+    policyScroll: {
+      marginBottom: 16,
+    },
+    policySection: {
+      marginBottom: 14,
+    },
+    policySectionHeading: {
+      fontSize: 14,
+      fontFamily: Fonts.sans.bold,
+      fontWeight: '700',
+      color: theme.text,
+      marginBottom: 4,
+    },
+    policySectionBody: {
+      fontSize: 13,
+      fontFamily: Fonts.sans.regular,
+      color: theme.textSecondary,
+      lineHeight: 19,
+    },
+    policyDoneBtn: {
+      borderRadius: 12,
+      paddingVertical: 13,
+      alignItems: 'center',
+      backgroundColor: theme.tintStrong,
+    },
+    policyDoneBtnText: {
+      fontSize: 14,
+      fontFamily: Fonts.sans.bold,
+      fontWeight: '700',
+      color: theme.onTint,
+    },
+  });

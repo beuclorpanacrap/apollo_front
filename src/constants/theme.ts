@@ -2,7 +2,7 @@
  * Apollo brand tokens.
  *
  * Core palette (do not add new raw hex elsewhere — extend this file instead):
- *   cream        #FBF6E8  – page background
+ *   cream        #FAF4E3  – page background
  *   spring green #4FAE72  – primary actions / active states
  *   deep green   #327A4C  – pressed / stronger accents / headers
  *   wood text    #2E5C40  – primary text
@@ -14,93 +14,93 @@ import '@/global.css';
 import { Platform } from 'react-native';
 
 const brand = {
-  cream: '#FBF8F1',
-  surfaceCard: '#FFFFFF',
-  forestGreen: '#2D7A4F',
-  headerGreen: '#246B44',
-  darkCharcoal: '#1B2A20',
-  mutedSecondary: '#6B7280',
+  cream: '#FAF4E3',
+  springGreen: '#4FAE72',
+  deepGreen: '#327A4C',
+  woodText: '#2E5C40',
   peachPill: '#FBEADB',
-  springGreen: '#2D7A4F',
-  deepGreen: '#246B44',
-  woodText: '#1B2A20',
+  // Added for the vault redesign — warm, distinct from the green brand pair,
+  // used to tell entry *types* apart at a glance (prescriptions / labs /
+  // conditions). Keep new raw hex here, not inline in screens.
+  marigold: '#D99A3D', // Prescriptions
+  clay: '#C9714F', // Lab / test results
+  plum: '#CE4685', // Chronic condition — vivid, berry-leaning
+  coral: '#D9634A', // Allergy — vivid, red-leaning (caution)
+  honey: '#DDAC3D', // Lifestyle — vivid, yellow-leaning (upbeat)
 } as const;
 
 export const BrandColors = brand;
 export const ClinicianColors = { background: '#F8FAFC', overlay: '#00000066' } as const;
 
-export interface AppTheme {
-  text: string;
-  textSecondary: string;
-  textTertiary: string;
-  background: string;
-  backgroundElement: string;
-  backgroundSelected: string;
-  surfaceMuted: string;
-  border: string;
-  tint: string;
-  tintStrong: string;
-  onTint: string;
-  pillGreenBg: string;
-  pillGreenText: string;
-  pillPeachBg: string;
-  pillPeachText: string;
-  danger: string;
-  dangerBg: string;
-}
-
-export const Colors: { light: AppTheme; dark: AppTheme } = {
+export const Colors = {
   light: {
-    text: brand.darkCharcoal,
-    textSecondary: brand.mutedSecondary,
-    textTertiary: '#9CA3AF',
-    background: '#FBF8F1',
-    backgroundElement: '#FFFFFF',
+    text: brand.woodText,
+    textSecondary: '#67876F',
+    textTertiary: '#90A691',
+    background: brand.cream,
+    backgroundElement: '#FFFDF7',
     backgroundSelected: '#DCEFE3',
-    surfaceMuted: '#F7F4EC',
-    border: '#EBE6DD',
-    tint: '#2D7A4F',
-    tintStrong: '#246B44',
+    surfaceMuted: '#EDEBDC',
+    border: '#DADDCD',
+    tint: brand.springGreen,
+    tintStrong: brand.deepGreen,
     onTint: '#FFFFFF',
-    pillGreenBg: '#EAF7EF',
-    pillGreenText: '#246B44',
+    pillGreenBg: '#DCEFE3',
+    pillGreenText: brand.woodText,
     pillPeachBg: brand.peachPill,
     pillPeachText: '#8B5A2E',
+    pillMarigoldBg: '#F6E6C9',
+    pillMarigoldText: '#7A5518',
+    pillClayBg: '#F3DED3',
+    pillClayText: '#7A3F2C',
+    pillPlumBg: '#F2D4E2',
+    pillPlumText: '#822651',
+    pillCoralBg: '#F5DCD5',
+    pillCoralText: '#8C3D2A',
+    pillHoneyBg: '#F6EAC7',
+    pillHoneyText: '#6B5518',
     danger: '#D32F2F',
     dangerBg: '#FFEBEE',
   },
   dark: {
-    text: '#F3F4F6',
-    textSecondary: '#9CA3AF',
-    textTertiary: '#64748B',
-    background: '#111817',
-    backgroundElement: '#1A2421',
-    backgroundSelected: '#273732',
-    surfaceMuted: '#0F1715',
-    border: '#273732',
-    tint: '#34D399',
-    tintStrong: '#4ADE80',
-    onTint: '#0F1715',
-    pillGreenBg: '#273732',
-    pillGreenText: '#34D399',
-    pillPeachBg: '#3E2D1E',
-    pillPeachText: '#FBBF24',
-    danger: '#F87171',
-    dangerBg: '#451A1A',
+    text: brand.cream,
+    textSecondary: '#B3C0AD',
+    textTertiary: '#8CA286',
+    background: '#1E3C2A',
+    backgroundElement: '#264B34',
+    backgroundSelected: '#2F5C3F',
+    surfaceMuted: '#24462F',
+    border: '#35573F',
+    tint: brand.springGreen,
+    tintStrong: '#3F9963',
+    onTint: '#0F2417',
+    pillGreenBg: '#2F5C3F',
+    pillGreenText: '#DCEFE3',
+    pillPeachBg: '#4A3524',
+    pillPeachText: '#F0C99A',
+    pillMarigoldBg: '#4A3B1C',
+    pillMarigoldText: '#F0D9A0',
+    pillClayBg: '#4A2E22',
+    pillClayText: '#F0C4B0',
+    pillPlumBg: '#441D2F',
+    pillPlumText: '#EDABCA',
+    pillCoralBg: '#4A2620',
+    pillCoralText: '#F0BBAC',
+    pillHoneyBg: '#3C351C',
+    pillHoneyText: '#EDDDA0',
+    danger: '#E57373',
+    dangerBg: '#4A2020',
   },
-};
+} as const;
 
-export type ThemeColor = keyof AppTheme;
+export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
 
 /**
  * Two type families, used deliberately:
  *  - `display` (Poppins, extra-bold) is reserved for the app name and the
- *    person's name — the one or two places per screen that should carry
- *    personality.
+ *    person's name 
  *  - `sans` (Inter) is every other body/heading weight in the app.
- * Native platforms need one distinct font-family name per weight (that's
- * how the loaded .ttf files work); web loads Inter/Poppins as real
- * multi-weight webfonts, so `fontWeight` alone does the job there.
+
  */
 export const Fonts = Platform.select({
   web: {

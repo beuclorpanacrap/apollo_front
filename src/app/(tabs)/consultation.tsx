@@ -107,7 +107,8 @@ export default function ConsultationScreen() {
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Doctor consultation</Text>
           <Text style={styles.headerSubtitle}>
-            Generate a single-use authorization PIN to grant your attending doctor 24-hour consultation access.
+            Generate a single-use authorization PIN to grant your attending doctor 24-hour
+            consultation access.
           </Text>
         </View>
 
