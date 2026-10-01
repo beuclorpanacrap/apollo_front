@@ -5,7 +5,11 @@ export type AuthResponse = components['schemas']['AuthResponse'];
 export type LoginRequest = components['schemas']['LoginRequest'];
 export type RegisterPatientRequest = components['schemas']['RegisterPatientRequest'];
 export type RegisterDoctorRequest = components['schemas']['RegisterDoctorRequest'];
-export type CurrentUserResponse = components['schemas']['CurrentUserResponse'];
+export type CurrentUserResponse = components['schemas']['CurrentUserResponse'] & {
+  specialty?: string;
+  doctorRole?: components['schemas']['RegisterDoctorRequest']['doctorRole'];
+  licenseNumber?: string;
+};
 
 export const authApi = {
   async login(credentials: LoginRequest): Promise<AuthResponse> {

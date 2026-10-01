@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+﻿import React, { useEffect } from 'react';
 import {
   DarkTheme,
   DefaultTheme,
@@ -51,8 +51,8 @@ function RouteGuard() {
     if (!isAuthenticated && !inAuthFlow) {
       router.replace('/welcome');
     } else if (isAuthenticated && user?.role === 'ROLE_DOCTOR') {
-      if (firstSegment !== 'doctor') router.replace('/doctor');
-    } else if (isAuthenticated && (inAuthFlow || firstSegment === 'doctor')) {
+      if (firstSegment !== 'doctor' && firstSegment !== 'doctor-vault' && firstSegment !== 'doctor-profile') router.replace('/doctor');
+    } else if (isAuthenticated && (inAuthFlow || firstSegment === 'doctor' || firstSegment === 'doctor-vault' || firstSegment === 'doctor-profile')) {
       if (firstSegment === 'register-patient') {
         // Send newly registered users straight into the baseline survey.
         router.replace('/onboarding');
@@ -60,7 +60,7 @@ function RouteGuard() {
         router.replace('/(tabs)');
       }
     }
-    // Note: deliberately not redirecting away from /onboarding here — a
+    // Note: deliberately not redirecting away from /onboarding here â€” a
     // signed-in user must be able to stay on it (first-run survey, or
     // revisiting it later from the Documentation tab to update their baseline).
   }, [isAuthenticated, isLoading, segments, user?.role, router]);
@@ -91,6 +91,8 @@ function RouteGuard() {
       <Stack.Screen name="register-patient" />
       <Stack.Screen name="register-doctor" />
       <Stack.Screen name="doctor" />
+      <Stack.Screen name="doctor-vault" />
+      <Stack.Screen name="doctor-profile" />
     </Stack>
   );
 }
@@ -193,3 +195,4 @@ const styles = StyleSheet.create({
     borderRightWidth: 1,
   },
 });
+
