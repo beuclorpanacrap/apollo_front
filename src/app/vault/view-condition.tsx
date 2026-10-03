@@ -7,7 +7,8 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Badge, IconBubble } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DetailRow } from '@/components/ui/detail-row';
-import { Colors, Fonts, Spacing } from '@/constants/theme';
+import { AppTheme, Fonts, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { useVault } from '@/context/vault-context';
 import { confirmAsync, notifyAsync } from '@/utils/confirm';
 import {
@@ -20,9 +21,9 @@ import {
   type VaultEntrySource,
 } from '@/utils/vault-display';
 
-const theme = Colors.light;
-
 export default function ViewConditionScreen() {
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { conditions, conditionStatuses, deleteConditionEntry, updateConditionStatus } = useVault();
@@ -148,33 +149,35 @@ export default function ViewConditionScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: theme.background },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, paddingVertical: 10 },
-  headerButton: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  scroll: { paddingBottom: 40 },
-  hero: { alignItems: 'center', paddingTop: 8, paddingBottom: 28, paddingHorizontal: 24, gap: 12 },
-  heroTitle: { fontSize: 26, fontFamily: Fonts.display, fontWeight: '800', color: theme.text, textAlign: 'center' },
-  badgeRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', justifyContent: 'center' },
-  content: { padding: 24, maxWidth: 600, alignSelf: 'center', width: '100%' },
-  actionsRow: { marginTop: Spacing.four },
-  statusAction: { marginTop: Spacing.four, marginBottom: Spacing.four },
-  statusNote: {
-    fontSize: 12,
-    fontFamily: Fonts.sans.regular,
-    color: theme.textSecondary,
-    textAlign: 'center',
-    marginTop: Spacing.one,
-  },
-  readOnlyNote: {
-    flexDirection: 'row',
-    gap: 10,
-    backgroundColor: theme.pillGreenBg,
-    borderRadius: 12,
-    padding: 14,
-    marginTop: Spacing.two,
-  },
-  readOnlyNoteText: { flex: 1, fontSize: 12, fontFamily: Fonts.sans.regular, color: theme.pillGreenText, lineHeight: 17 },
-  notFoundBody: { padding: 32, alignItems: 'center', gap: 10 },
-  notFoundText: { fontSize: 14, fontFamily: Fonts.sans.regular, color: theme.textSecondary, textAlign: 'center' },
-});
+function createStyles(theme: AppTheme) {
+  return StyleSheet.create({
+    safeArea: { flex: 1, backgroundColor: theme.background },
+    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, paddingVertical: 10 },
+    headerButton: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+    scroll: { paddingBottom: 40 },
+    hero: { alignItems: 'center', paddingTop: 8, paddingBottom: 28, paddingHorizontal: 24, gap: 12 },
+    heroTitle: { fontSize: 26, fontFamily: Fonts.display, fontWeight: '800', color: theme.text, textAlign: 'center' },
+    badgeRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', justifyContent: 'center' },
+    content: { padding: 24, maxWidth: 600, alignSelf: 'center', width: '100%' },
+    actionsRow: { marginTop: Spacing.four },
+    statusAction: { marginTop: Spacing.four, marginBottom: Spacing.four },
+    statusNote: {
+      fontSize: 12,
+      fontFamily: Fonts.sans.regular,
+      color: theme.textSecondary,
+      textAlign: 'center',
+      marginTop: Spacing.one,
+    },
+    readOnlyNote: {
+      flexDirection: 'row',
+      gap: 10,
+      backgroundColor: theme.pillGreenBg,
+      borderRadius: 12,
+      padding: 14,
+      marginTop: Spacing.two,
+    },
+    readOnlyNoteText: { flex: 1, fontSize: 12, fontFamily: Fonts.sans.regular, color: theme.pillGreenText, lineHeight: 17 },
+    notFoundBody: { padding: 32, alignItems: 'center', gap: 10 },
+    notFoundText: { fontSize: 14, fontFamily: Fonts.sans.regular, color: theme.textSecondary, textAlign: 'center' },
+  });
+}

@@ -1,4 +1,4 @@
-﻿import React, { useEffect } from 'react';
+import React, { useEffect } from 'react';
 import {
   DarkTheme,
   DefaultTheme,
@@ -106,12 +106,23 @@ function RouteGuard() {
 }
 
 function WebFrameContainer({ children }: { children: React.ReactNode }) {
-  const { theme } = useThemeContext();
+  const { theme, isDark } = useThemeContext();
   const background = useAppBackground();
   if (Platform.OS === 'web') {
     return (
-      <View style={[styles.webOuter, { backgroundColor: theme.surfaceMuted }]}>
-        <View style={[styles.webFrame, { backgroundColor: background, borderColor: theme.border }]}>
+      <View style={[styles.webOuter, { backgroundColor: isDark ? '#0B1110' : theme.surfaceMuted }]}>
+        <View
+          style={[
+            styles.webFrame,
+            {
+              backgroundColor: background,
+              borderColor: isDark ? '#1D2A26' : theme.border,
+              boxShadow: isDark
+                ? '0 4px 20px rgba(0, 0, 0, 0.5)'
+                : '0 4px 16px rgba(50, 122, 76, 0.08)',
+            },
+          ]}
+        >
           {children}
         </View>
       </View>
@@ -192,17 +203,6 @@ const styles = StyleSheet.create({
   webFrame: {
     flex: 1,
     width: '100%',
-    ...Platform.select({
-      web: {
-        boxShadow: '0 4px 16px rgba(50, 122, 76, 0.12)',
-      },
-      default: {
-        shadowColor: '#246B44',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.12,
-        shadowRadius: 16,
-      },
-    }),
     borderLeftWidth: 1,
     borderRightWidth: 1,
   },
