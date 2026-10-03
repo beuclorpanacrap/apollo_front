@@ -1191,6 +1191,21 @@ export interface components {
              */
             weightKg?: number;
             /**
+             * @description Medical license number (doctor profiles)
+             * @example MD-12345678
+             */
+            licenseNumber?: string;
+            /**
+             * @description Medical specialty (doctor profiles)
+             * @example Cardiology
+             */
+            specialty?: string;
+            /**
+             * @description Doctor role category (doctor profiles)
+             * @example SPECIALIST
+             */
+            doctorRole?: "GENERAL_PRACTITIONER" | "SPECIALIST" | "LAB_TECHNICIAN" | "PHARMACIST";
+            /**
              * Format: date-time
              * @description Account creation timestamp
              */
