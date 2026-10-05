@@ -17,6 +17,26 @@ export async function removeAuthToken(): Promise<void> {
   await storage.removeItem(TOKEN_KEY);
 }
 
+type UnauthorizedListener = () => void;
+const unauthorizedListeners = new Set<UnauthorizedListener>();
+
+export function onUnauthorized(listener: UnauthorizedListener): () => void {
+  unauthorizedListeners.add(listener);
+  return () => {
+    unauthorizedListeners.delete(listener);
+  };
+}
+
+function notifyUnauthorized() {
+  unauthorizedListeners.forEach((listener) => {
+    try {
+      listener();
+    } catch (e) {
+      console.warn('[apiClient] error in unauthorized listener:', e);
+    }
+  });
+}
+
 export interface RequestOptions extends Omit<RequestInit, 'body'> {
   body?: any;
   params?: Record<string, string | number | boolean | undefined | null>;
@@ -76,6 +96,7 @@ export async function apiClient<T = any>(
   if (response.status === 401) {
     // Token may be invalid or expired
     await removeAuthToken();
+    notifyUnauthorized();
   }
 
   const contentType = response.headers.get('content-type');

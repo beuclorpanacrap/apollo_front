@@ -6,13 +6,14 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { EmptyState } from '@/components/ui/empty-state';
 import { EntryCard } from '@/components/vault/entry-card';
-import { Colors, Fonts, Spacing } from '@/constants/theme';
+import { AppTheme, Fonts, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { useVault } from '@/context/vault-context';
 import { conditionToDisplayEntry, formatConditionType, sortByDateDesc } from '@/utils/vault-display';
 
-const theme = Colors.light;
-
 export default function ConditionSearchScreen() {
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const router = useRouter();
   const { type } = useLocalSearchParams<{ type: string }>();
   const { conditions } = useVault();
@@ -65,33 +66,35 @@ export default function ConditionSearchScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: theme.background },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.border,
-  },
-  headerButton: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: 16, fontFamily: Fonts.sans.bold, fontWeight: '700', color: theme.text },
-  searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginHorizontal: 20,
-    marginTop: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 12,
-    backgroundColor: theme.backgroundElement,
-    borderWidth: 1,
-    borderColor: theme.border,
-  },
-  searchInput: { flex: 1, fontSize: 14, fontFamily: Fonts.sans.regular, color: theme.text },
-  content: { padding: 20, paddingBottom: 40, maxWidth: 600, alignSelf: 'center', width: '100%' },
-  list: { gap: Spacing.two },
-});
+function createStyles(theme: AppTheme) {
+  return StyleSheet.create({
+    safeArea: { flex: 1, backgroundColor: theme.background },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.border,
+    },
+    headerButton: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+    headerTitle: { fontSize: 16, fontFamily: Fonts.sans.bold, fontWeight: '700', color: theme.text },
+    searchBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginHorizontal: 20,
+      marginTop: 14,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      borderRadius: 12,
+      backgroundColor: theme.backgroundElement,
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    searchInput: { flex: 1, fontSize: 14, fontFamily: Fonts.sans.regular, color: theme.text },
+    content: { padding: 20, paddingBottom: 40, maxWidth: 600, alignSelf: 'center', width: '100%' },
+    list: { gap: Spacing.two },
+  });
+}

@@ -29,6 +29,8 @@ import {
   updateLocalPrescription,
   updateLocalPrescriptionStatus,
   setLocalConditionStatus,
+  setLocalRecordsScope,
+  clearActiveScope,
 } from '@/utils/local-records-store';
 import {
   conditionToDisplayEntry,
@@ -77,7 +79,7 @@ interface VaultContextType {
 const VaultContext = createContext<VaultContextType | undefined>(undefined);
 
 export function VaultProvider({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuth();
+  const { user, isAuthenticated } = useAuth();
 
   const [conditions, setConditions] = useState<HealthConditionResponse[]>([]);
   const [encounters, setEncounters] = useState<ClinicalEncounterSummaryDto[]>([]);
@@ -98,6 +100,8 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
     }
     setError(null);
     try {
+      const scopeId = user?.userId || user?.profileId || user?.email;
+      setLocalRecordsScope(scopeId);
       const [timeline, rx, labs, localRx, localLabs, savedConditionStatuses] = await Promise.all([
         vaultApi.getTimeline(),
         vaultApi.getPrescriptions().catch(() => [] as PrescriptionResponse[]),
@@ -120,12 +124,15 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, user?.userId, user?.profileId, user?.email]);
 
   useEffect(() => {
     if (isAuthenticated) {
+      const scopeId = user?.userId || user?.profileId || user?.email;
+      setLocalRecordsScope(scopeId);
       load();
     } else {
+      clearActiveScope();
       setIsLoading(false);
       setConditions([]);
       setEncounters([]);
@@ -135,7 +142,7 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
       setLocalLabResults([]);
       setConditionStatuses({});
     }
-  }, [isAuthenticated, load]);
+  }, [isAuthenticated, user?.userId, user?.profileId, user?.email, load]);
 
   const refresh = useCallback(async () => {
     setIsRefreshing(true);
