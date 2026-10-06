@@ -1,6 +1,6 @@
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { useThemeContext } from '@/context/theme-context';
+import { Colors } from '../constants/theme';
+import { useColorScheme } from './use-color-scheme';
+import { useThemeContext } from '../context/theme-context';
 
 // Dark mode is now driven by Settings (see AppThemeProvider in
 // theme-context.tsx) rather than hardcoded to light. useTheme() reads from
@@ -17,4 +17,4 @@ export function useTheme() {
   }
 }
 
-export { useThemeContext } from '@/context/theme-context';
+export { useThemeContext } from '../context/theme-context';

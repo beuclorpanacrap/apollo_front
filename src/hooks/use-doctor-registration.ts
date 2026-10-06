@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { Alert, Platform } from 'react-native';
-import { openDoctorRegistrationWebsite } from '@/utils/doctor-registration-link';
+import { openDoctorRegistrationWebsite } from '../utils/doctor-registration-link';
 
 export function useDoctorRegistration() {
   const router = useRouter();
