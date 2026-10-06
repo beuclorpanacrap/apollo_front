@@ -129,7 +129,7 @@ export function DateField({ value, onChange, quickOptions = DEFAULT_QUICK }: Dat
         <View style={styles.selectedRow}>
           <Ionicons name="calendar" size={14} color={theme.tintStrong} />
           <Text style={[styles.selectedText, { color: theme.text }]}>{formatDisplay(value)}</Text>
-          <Pressable onPress={() => onChange(undefined)} hitSlop={8}>
+          <Pressable onPress={() => onChange(undefined)} hitSlop={8} accessibilityRole="button" accessibilityLabel="Clear date">
             <Ionicons name="close-circle" size={16} color={theme.textTertiary} />
           </Pressable>
         </View>

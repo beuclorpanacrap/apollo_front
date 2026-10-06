@@ -1,6 +1,6 @@
 import Svg, { Path, Rect } from 'react-native-svg';
 
-import { BrandColors } from '@/constants/theme';
+import { BrandColors } from '../constants/theme';
 
 type AppMarkProps = {
   size?: number;

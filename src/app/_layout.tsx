@@ -54,13 +54,15 @@ function RouteGuard() {
       firstSegment === 'sign-in' ||
       firstSegment === 'sign-up' ||
       firstSegment === 'register-patient' ||
-      firstSegment === 'register-doctor';
+      firstSegment === 'register-doctor' ||
+      firstSegment === 'index' ||
+      firstSegment === undefined;
 
     if (!isAuthenticated && !inAuthFlow) {
       router.replace('/welcome');
     } else if (isAuthenticated && user?.role === 'ROLE_DOCTOR') {
-      if (firstSegment !== 'doctor' && firstSegment !== 'doctor-vault' && firstSegment !== 'doctor-profile') router.replace('/doctor');
-    } else if (isAuthenticated && (inAuthFlow || firstSegment === 'doctor' || firstSegment === 'doctor-vault' || firstSegment === 'doctor-profile')) {
+      if (firstSegment !== 'doctor' && firstSegment !== 'doctor-vault' && firstSegment !== 'doctor-profile' && firstSegment !== 'doctor-lab-result') router.replace('/doctor');
+    } else if (isAuthenticated && (inAuthFlow || firstSegment === 'doctor' || firstSegment === 'doctor-vault' || firstSegment === 'doctor-profile' || firstSegment === 'doctor-lab-result')) {
       if (firstSegment === 'register-patient') {
         // Send newly registered users straight into the baseline survey.
         router.replace('/onboarding');
@@ -101,6 +103,7 @@ function RouteGuard() {
       <Stack.Screen name="doctor" />
       <Stack.Screen name="doctor-vault" />
       <Stack.Screen name="doctor-profile" />
+      <Stack.Screen name="doctor-lab-result" />
     </Stack>
   );
 }
