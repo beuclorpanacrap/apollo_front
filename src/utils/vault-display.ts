@@ -3,6 +3,8 @@ import { Ionicons } from '@expo/vector-icons';
 
 import type { HealthConditionResponse, LabTestResultResponse, PrescriptionResponse } from '@/api/vault.api';
 import { BrandColors, Colors } from '@/constants/theme';
+import { getLabPanel, summarizePanel } from './lab-trends';
+import type { RemoteLabGroup } from './remote-panels';
 import type { LocalLabResult, LocalPrescription, PatientConditionStatus } from '@/types/local-records';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
@@ -235,6 +237,22 @@ export function labResultToDisplayEntry(r: LabTestResultResponse): VaultDisplayE
   };
 }
 
+/** A doctor-entered template result (several values recorded together) as one entry. */
+export function labGroupToDisplayEntry(group: RemoteLabGroup): VaultDisplayEntry {
+  return {
+    id: group.id,
+    kind: 'LAB_RESULT',
+    title: group.template.name,
+    subtitle: [summarizePanel(group.entries), group.doctorName].filter(Boolean).join(' · '),
+    dateLabel: formatDateLabel(group.recordedAt),
+    sortKey: group.recordedAt,
+    source: 'DOCTOR_VERIFIED',
+    isLocal: false,
+    isEditable: false,
+    viewHref: { pathname: '/vault/view-lab-result', params: { id: group.id } },
+  };
+}
+
 export function localPrescriptionToDisplayEntry(rx: LocalPrescription): VaultDisplayEntry {
   return {
     id: rx.id,
@@ -252,8 +270,10 @@ export function localPrescriptionToDisplayEntry(rx: LocalPrescription): VaultDis
 }
 
 export function localLabResultToDisplayEntry(lab: LocalLabResult): VaultDisplayEntry {
-  const valueText =
-    lab.mode === 'structured'
+  const panel = getLabPanel(lab);
+  const valueText = panel
+    ? summarizePanel(panel.panel.entries)
+    : lab.mode === 'structured'
       ? [
           lab.numericValue != null ? `${lab.numericValue} ${lab.unit ?? ''}`.trim() : undefined,
           lab.referenceRange ? `ref ${lab.referenceRange}` : undefined,

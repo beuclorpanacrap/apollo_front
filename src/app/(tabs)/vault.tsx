@@ -9,9 +9,11 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { Pagination } from '@/components/ui/pagination';
 import { EntryCard } from '@/components/vault/entry-card';
 import { EncounterCard } from '@/components/vault/encounter-card';
+import { TrendCard } from '@/components/vault/trend-card';
 import { AppTheme, BrandColors, Fonts, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useVault } from '@/context/vault-context';
+import { buildTrendSeries } from '@/utils/lab-trends';
 import type { VaultDisplayEntry } from '@/utils/vault-display';
 
 type TabKey = 'prescriptions' | 'labs' | 'conditions' | 'encounters';
@@ -128,8 +130,24 @@ export default function VaultScreen() {
   const styles = useMemo(() => createStyles(theme), [theme]);
   const router = useRouter();
   const params = useLocalSearchParams<{ tab?: string }>();
-  const { isLoading, isRefreshing, error, refresh, prescriptionEntries, labResultEntries, conditionEntries, encounters } =
-    useVault();
+  const {
+    isLoading,
+    isRefreshing,
+    error,
+    refresh,
+    prescriptionEntries,
+    labResultEntries,
+    conditionEntries,
+    encounters,
+    localLabResults,
+    testResults,
+  } = useVault();
+
+  // Only values measured at least twice have a trend to draw.
+  const trendSeries = useMemo(
+    () => buildTrendSeries(localLabResults, testResults).filter((series) => series.points.length >= 2),
+    [localLabResults, testResults]
+  );
 
   const [activeTab, setActiveTab] = useState<TabKey>('prescriptions');
   const [rxFilter, setRxFilter] = useState<RxFilter>('ALL');
@@ -418,6 +436,15 @@ export default function VaultScreen() {
                 <View style={[styles.addButtonRow, styles.labAddButtonRow]}>
                   <Button label="Add test result" icon="add" size="compact" onPress={() => router.push('/vault/add-lab-result')} />
                 </View>
+                {trendSeries.length > 0 ? (
+                  <View style={styles.trendSection}>
+                    <Text style={styles.groupTitle}>Trends over time</Text>
+                    {trendSeries.map((series) => (
+                      <TrendCard key={series.key} series={series} />
+                    ))}
+                    <Text style={[styles.groupTitle, styles.trendListTitle]}>All results</Text>
+                  </View>
+                ) : null}
                 {categoryEntries.length === 0 ? (
                   <EmptyState
                     icon="flask"
@@ -648,6 +675,8 @@ const createStyles = (theme: AppTheme) =>
   groupHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.two },
   groupHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   groupDot: { width: 10, height: 10, borderRadius: 5 },
+  trendSection: { marginBottom: Spacing.two, gap: Spacing.one },
+  trendListTitle: { marginTop: Spacing.two },
   groupTitle: { fontSize: 15, fontFamily: Fonts.sans.bold, fontWeight: '700', color: theme.text },
   groupCountPill: { minWidth: 24, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 7 },
   groupCountText: { fontSize: 12, fontFamily: Fonts.sans.semiBold, fontWeight: '600' },
