@@ -10,6 +10,8 @@
  * src/api/types.ts) wherever the concepts line up.
  */
 
+import type { ResultEntry } from '../components/types';
+
 export const LOCAL_SOURCE: 'PATIENT_LOCAL' = 'PATIENT_LOCAL';
 export type LocalSourceType = typeof LOCAL_SOURCE;
 
@@ -39,6 +41,15 @@ export type LocalPrescriptionDraft = {
   dateAdded: string;
 };
 
+/** A structured result entered from a lab template (e.g. a complete blood count):
+ *  several values saved together, each with its own flag and reference. */
+export interface LocalLabPanel {
+  templateCode: string;
+  templateVersion: number;
+  status: 'draft' | 'final';
+  entries: ResultEntry[];
+}
+
 /** Mirrors LabTestResultResponse's testName/numericValue/unit for the
  *  structured case; `referenceRange` and freeform mode are local extensions. */
 export interface LocalLabResult {
@@ -49,6 +60,8 @@ export interface LocalLabResult {
   unit?: string;
   referenceRange?: string;
   freeformResult?: string;
+  /** Set for results entered from a lab template. */
+  panel?: LocalLabPanel;
   dateAdded: string;
   source: LocalSourceType;
   createdAt: string;
@@ -62,5 +75,6 @@ export type LocalLabResultDraft = {
   unit?: string;
   referenceRange?: string;
   freeformResult?: string;
+  panel?: LocalLabPanel;
   dateAdded: string;
 };

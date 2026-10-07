@@ -1,12 +1,13 @@
 import { useMemo, useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
-import { DateField } from '../ui/date-field';
 import { BottomTabInset, MaxContentWidth, Spacing } from '../../constants/theme';
 import { LabResultForm } from '../LabResultForm';
 import { Button, Chip, CriticalBanner, font, SectionCard, useLabTheme } from '../LabUI';
 import { allFields, evaluateTemplate, isCritical } from '../evaluate';
+import { ThemedDatePicker } from '../themed-date-picker';
 import { cbc, getTemplate, TEMPLATES } from '../templates';
 import type { DraftValues, LabResultPayload, PatientContext, ResultStatus } from '../types';
 
@@ -16,17 +17,26 @@ interface Props {
   onSave?: (payload: LabResultPayload) => void | Promise<void>;
 }
 
-// Date the test was taken: today by default, never in the future.
-const DATE_OPTIONS = [
-  { label: 'Today', days: 0 },
-  { label: 'Yesterday', days: -1 },
-  { label: '1 week ago', days: -7 },
+const toIso = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+const DATE_SHORTCUTS = [
+  { label: 'Today', daysAgo: 0 },
+  { label: 'Yesterday', daysAgo: 1 },
+  { label: '1 week ago', daysAgo: 7 },
 ];
 
-function todayIso(): string {
+const daysAgoIso = (days: number) => {
   const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
+  d.setDate(d.getDate() - days);
+  return toIso(d);
+};
+
+// Noon avoids the date shifting across time zones.
+const fromIso = (iso: string) => new Date(`${iso}T12:00:00`);
+
+const formatDate = (iso: string) =>
+  fromIso(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 
 // Demo patient for the standalone screen. In the real flow the unlocked patient is passed in.
 const DEMO_PATIENT: PatientContext = { sex: 'female', ageYears: 34 };
@@ -37,13 +47,9 @@ export default function NewLabResultScreen({ patient = DEMO_PATIENT, onSave }: P
   const [templateCode, setTemplateCode] = useState(cbc.code);
   const [values, setValues] = useState<DraftValues>({});
   const [triedToFinalize, setTriedToFinalize] = useState(false);
-  const [takenOn, setTakenOn] = useState<string | undefined>(todayIso);
-
-  const dateError = !takenOn
-    ? 'Enter the date the test was taken'
-    : takenOn > todayIso()
-      ? 'The date cannot be in the future'
-      : undefined;
+  // Date the test was taken: today by default, never in the future (the picker stops later days).
+  const [takenOn, setTakenOn] = useState(() => toIso(new Date()));
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   const template = getTemplate(templateCode) ?? cbc;
 
@@ -67,7 +73,6 @@ export default function NewLabResultScreen({ patient = DEMO_PATIENT, onSave }: P
   async function save(status: ResultStatus) {
     const finalizing = status === 'final';
     if (finalizing) setTriedToFinalize(true);
-    if (!takenOn || dateError) return;
 
     const result = evaluateTemplate(template, values, patient, { requireComplete: finalizing });
     if (result.entries.length === 0 || Object.keys(result.errors).length > 0) return;
@@ -125,12 +130,44 @@ export default function NewLabResultScreen({ patient = DEMO_PATIENT, onSave }: P
       </SectionCard>
 
       <SectionCard title="Date taken">
-        <DateField value={takenOn} onChange={setTakenOn} quickOptions={DATE_OPTIONS} />
-        {dateError ? (
-          <Text accessibilityRole="alert" style={[font('regular'), { color: c.danger, fontSize: 12 }]}>
-            {dateError}
-          </Text>
-        ) : null}
+        <View
+          accessibilityRole="radiogroup"
+          accessibilityLabel="Date shortcuts"
+          style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two }}>
+          {DATE_SHORTCUTS.map(({ label, daysAgo }) => (
+            <Chip
+              key={label}
+              label={label}
+              selected={takenOn === daysAgoIso(daysAgo)}
+              onPress={() => setTakenOn(daysAgoIso(daysAgo))}
+            />
+          ))}
+        </View>
+        <Pressable
+          onPress={() => setShowDatePicker(true)}
+          accessibilityRole="button"
+          accessibilityLabel="Date taken"
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            borderWidth: 1,
+            borderColor: c.border,
+            borderRadius: 12,
+            backgroundColor: c.background,
+            paddingHorizontal: Spacing.three,
+            paddingVertical: Spacing.two + Spacing.half,
+          }}>
+          <Text style={[font('medium'), { color: c.text, fontSize: 15 }]}>{formatDate(takenOn)}</Text>
+          <Ionicons name="calendar-outline" size={20} color={c.textTertiary} />
+        </Pressable>
+        <ThemedDatePicker
+          visible={showDatePicker}
+          value={fromIso(takenOn)}
+          maximumDate={new Date()}
+          onClose={() => setShowDatePicker(false)}
+          onChange={(date) => setTakenOn(toIso(date))}
+        />
       </SectionCard>
 
       <CriticalBanner labels={criticalLabels} />

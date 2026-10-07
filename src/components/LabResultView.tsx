@@ -9,17 +9,19 @@ interface Props {
   /** The template version the result was saved with (see getTemplate). */
   template: LabTemplate;
   entries: ResultEntry[];
+  /** Set to false when the screen already shows the test name. */
+  showTitle?: boolean;
 }
 
 /** Read-only report. Doctors and patients both use it, so the role-based UI can share one component. */
-export function LabResultView({ template, entries }: Props) {
+export function LabResultView({ template, entries, showTitle = true }: Props) {
   const c = useLabTheme();
   const byKey = new Map(entries.map((entry) => [entry.key, entry] as const));
 
   return (
     <View style={{ gap: Spacing.three }}>
       <View style={{ gap: Spacing.one }}>
-        <Text style={[font('bold'), { color: c.text, fontSize: 22 }]}>{template.name}</Text>
+        {showTitle ? <Text style={[font('bold'), { color: c.text, fontSize: 22 }]}>{template.name}</Text> : null}
         <Text style={[font('regular'), { color: c.textSecondary, fontSize: 14 }]}>
           {template.specimen}
         </Text>

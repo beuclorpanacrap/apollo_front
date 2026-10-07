@@ -9,6 +9,8 @@ import {
   type PrescriptionResponse,
 } from '@/api/vault.api';
 import { useAuth } from '@/context/auth-context';
+import { patientContext } from '@/utils/patient-context';
+import { groupRemoteLabs, type RemoteLabGroup } from '@/utils/remote-panels';
 import type {
   LocalLabResult,
   LocalLabResultDraft,
@@ -34,6 +36,7 @@ import {
 } from '@/utils/local-records-store';
 import {
   conditionToDisplayEntry,
+  labGroupToDisplayEntry,
   labResultToDisplayEntry,
   localLabResultToDisplayEntry,
   localPrescriptionToDisplayEntry,
@@ -54,6 +57,8 @@ interface VaultContextType {
   testResults: LabTestResultResponse[];
   localPrescriptions: LocalPrescription[];
   localLabResults: LocalLabResult[];
+  /** Doctor-entered template results, put back together from the per-value backend records. */
+  remoteLabGroups: RemoteLabGroup[];
 
   // Normalized, merged views for rendering.
   conditionEntries: VaultDisplayEntry[];
@@ -264,13 +269,19 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
     [prescriptions, localPrescriptions]
   );
 
+  const { remoteLabGroups, ungroupedTestResults } = useMemo(() => {
+    const { groups, singles } = groupRemoteLabs(testResults, patientContext(user ?? {}));
+    return { remoteLabGroups: groups, ungroupedTestResults: singles as LabTestResultResponse[] };
+  }, [testResults, user]);
+
   const labResultEntries = useMemo(
     () =>
       sortByDateDesc([
-        ...testResults.map(labResultToDisplayEntry),
+        ...remoteLabGroups.map(labGroupToDisplayEntry),
+        ...ungroupedTestResults.map(labResultToDisplayEntry),
         ...localLabResults.map(localLabResultToDisplayEntry),
       ]),
-    [testResults, localLabResults]
+    [remoteLabGroups, ungroupedTestResults, localLabResults]
   );
 
   return (
@@ -285,6 +296,7 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
         testResults,
         localPrescriptions,
         localLabResults,
+        remoteLabGroups,
         conditionEntries,
         conditionStatuses,
         prescriptionEntries,

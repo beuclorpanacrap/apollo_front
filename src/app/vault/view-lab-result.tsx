@@ -5,23 +5,64 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { Badge, IconBubble } from '@/components/ui/badge';
+import { LabResultView } from '@/components/LabResultView';
 import { Button } from '@/components/ui/button';
 import { DetailRow } from '@/components/ui/detail-row';
+import { TrendCard } from '@/components/vault/trend-card';
 import { AppTheme, BrandColors, Fonts, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useVault } from '@/context/vault-context';
 import { confirmAsync } from '@/utils/confirm';
+import { allFields } from '@/components/evaluate';
+import { buildTrendSeries, getLabPanel, seriesKey } from '@/utils/lab-trends';
 import { formatDateLabel } from '@/utils/vault-display';
+
+/** Graphs for the values on this result that have been measured more than once. */
+function useTrendsFor(
+  panelInfo: ReturnType<typeof getLabPanel>,
+  testName: string | undefined,
+  numericValue: number | undefined,
+  localLabResults: ReturnType<typeof useVault>['localLabResults'],
+  testResults: ReturnType<typeof useVault>['testResults']
+) {
+  return useMemo(() => {
+    const wanted = new Set<string>();
+    if (panelInfo) {
+      const labels = new Map(allFields(panelInfo.template).map((f) => [f.key, f.label] as const));
+      for (const entry of panelInfo.panel.entries) {
+        if (typeof entry.value === 'number') wanted.add(seriesKey(labels.get(entry.key) ?? entry.key));
+      }
+    } else if (testName && numericValue != null) {
+      wanted.add(seriesKey(testName));
+    }
+    return buildTrendSeries(localLabResults, testResults).filter(
+      (series) => wanted.has(series.key) && series.points.length >= 2
+    );
+  }, [panelInfo, testName, numericValue, localLabResults, testResults]);
+}
 
 export default function ViewLabResultScreen() {
   const theme = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { localLabResults, testResults, removeLabResult } = useVault();
+  const { localLabResults, testResults, remoteLabGroups, removeLabResult } = useVault();
 
   const local = useMemo(() => localLabResults.find((l) => l.id === id), [localLabResults, id]);
-  const remote = useMemo(() => (!local ? testResults.find((l) => l.id === id) : undefined), [local, testResults, id]);
+  const group = useMemo(() => (!local ? remoteLabGroups.find((g) => g.id === id) : undefined), [local, remoteLabGroups, id]);
+  const remote = useMemo(
+    () => (!local && !group ? testResults.find((l) => l.id === id) : undefined),
+    [local, group, testResults, id]
+  );
+
+  const panelInfo = useMemo(() => {
+    if (local) return getLabPanel(local);
+    if (!group) return undefined;
+    return {
+      template: group.template,
+      panel: { templateCode: group.template.code, templateVersion: group.template.version, status: 'final' as const, entries: group.entries },
+    };
+  }, [local, group]);
 
   const record = local
     ? {
@@ -33,6 +74,16 @@ export default function ViewLabResultScreen() {
         date: local.dateAdded,
         doctorName: undefined as string | undefined,
       }
+    : group
+      ? {
+          name: group.template.name,
+          numericValue: undefined as number | undefined,
+          unit: undefined as string | undefined,
+          referenceRange: undefined as string | undefined,
+          freeformResult: undefined as string | undefined,
+          date: group.recordedAt,
+          doctorName: group.doctorName,
+        }
     : remote
       ? {
           name: remote.testName,
@@ -44,6 +95,8 @@ export default function ViewLabResultScreen() {
           doctorName: remote.doctorName,
         }
       : undefined;
+
+  const trends = useTrendsFor(panelInfo, record?.name, record?.numericValue, localLabResults, testResults);
 
   if (!record) {
     return (
@@ -62,8 +115,7 @@ export default function ViewLabResultScreen() {
     );
   }
 
-  const hasStat = record.numericValue != null;
-  const handleEdit = () => router.push({ pathname: '/vault/add-lab-result', params: { editId: id } });
+  const hasStat = record.numericValue != null && !panelInfo;
   const handleDelete = async () => {
     const confirmed = await confirmAsync('Delete this result?', "This can't be undone.");
     if (!confirmed) return;
@@ -104,7 +156,20 @@ export default function ViewLabResultScreen() {
         </View>
 
         <View style={styles.content}>
-          {record.freeformResult ? (
+          {panelInfo ? (
+            <View style={{ marginBottom: Spacing.three }}>
+              <LabResultView template={panelInfo.template} entries={panelInfo.panel.entries} showTitle={false} />
+            </View>
+          ) : null}
+          {trends.length > 0 ? (
+            <View style={styles.trends}>
+              <Text style={styles.trendsTitle}>Over time</Text>
+              {trends.map((series) => (
+                <TrendCard key={series.key} series={series} />
+              ))}
+            </View>
+          ) : null}
+          {record.freeformResult && !panelInfo ? (
             <DetailRow icon="document-text-outline" label="Result">
               {record.freeformResult}
             </DetailRow>
@@ -120,9 +185,6 @@ export default function ViewLabResultScreen() {
 
           {local ? (
             <View style={styles.actionsRow}>
-              <View style={{ flex: 1 }}>
-                <Button label="Edit" variant="secondary" icon="create-outline" onPress={handleEdit} fullWidth />
-              </View>
               <View style={{ flex: 1 }}>
                 <Button label="Delete" variant="danger" icon="trash-outline" onPress={handleDelete} fullWidth />
               </View>
@@ -154,6 +216,8 @@ function createStyles(theme: AppTheme) {
     statUnit: { fontSize: 18, fontFamily: Fonts.sans.semiBold, fontWeight: '600', color: theme.textSecondary, marginBottom: 8 },
     statRange: { fontSize: 12, fontFamily: Fonts.sans.medium, fontWeight: '500', color: theme.textTertiary, marginTop: -6 },
     content: { padding: 24, maxWidth: 600, alignSelf: 'center', width: '100%' },
+    trends: { marginBottom: Spacing.three, gap: Spacing.one },
+    trendsTitle: { fontSize: 15, fontFamily: Fonts.sans.bold, fontWeight: '700', color: theme.text },
     actionsRow: { flexDirection: 'row', gap: 10, marginTop: Spacing.four },
     readOnlyNote: {
       flexDirection: 'row',

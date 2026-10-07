@@ -49,14 +49,36 @@ describe('NewLabResultScreen', () => {
     expect(payload.takenOn).toBe(today);
   });
 
-  it('does not save when the date is cleared', async () => {
+  it('has shortcuts for today, yesterday and a week ago', async () => {
     await render(<NewLabResultScreen />);
     await type('Hemoglobin', '138');
-    await fireEvent.press(screen.getByLabelText('Clear date'));
-    expect(screen.getByText('Enter the date the test was taken')).toBeTruthy();
+    const iso = (daysAgo: number) => {
+      const d = new Date();
+      d.setDate(d.getDate() - daysAgo);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    };
 
+    await fireEvent.press(screen.getByRole('radio', { name: 'Yesterday' }));
+    expect(screen.getByRole('radio', { name: 'Yesterday' }).props.accessibilityState?.selected).toBe(true);
     await fireEvent.press(screen.getByText('Save draft'));
-    expect(log).not.toHaveBeenCalled();
+    expect(JSON.parse(String(log.mock.calls[0]?.[0])).takenOn).toBe(iso(1));
+
+    await fireEvent.press(screen.getByRole('radio', { name: '1 week ago' }));
+    await fireEvent.press(screen.getByText('Save draft'));
+    expect(JSON.parse(String(log.mock.calls[1]?.[0])).takenOn).toBe(iso(7));
+  });
+
+  it('lets you pick another date with the calendar', async () => {
+    await render(<NewLabResultScreen />);
+    await type('Hemoglobin', '138');
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Date taken' }));
+    await fireEvent.press(screen.getAllByText('1')[0]!); // the 1st of the current month
+    await fireEvent.press(screen.getByText('Save draft'));
+
+    const d = new Date();
+    const firstOfMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+    expect(JSON.parse(String(log.mock.calls[0]?.[0])).takenOn).toBe(firstOfMonth);
   });
 
   it('shows the critical banner for a critical value', async () => {
