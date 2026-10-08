@@ -1,0 +1,138 @@
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { authApi, CurrentUserResponse, LoginRequest, RegisterPatientRequest, RegisterDoctorRequest } from '@/api/auth.api';
+import { getAuthToken, removeAuthToken, onUnauthorized } from '@/api/client';
+import { clearActiveScope } from '@/utils/local-records-store';
+
+interface AuthContextType {
+  user: CurrentUserResponse | null;
+  token: string | null;
+  isLoading: boolean;
+  isAuthenticated: boolean;
+  login: (credentials: LoginRequest) => Promise<CurrentUserResponse>;
+  registerPatient: (request: RegisterPatientRequest) => Promise<CurrentUserResponse>;
+  registerDoctor: (request: RegisterDoctorRequest) => Promise<CurrentUserResponse>;
+  logout: () => Promise<void>;
+  refreshUser: () => Promise<void>;
+  updateUserLocally: (partial: Partial<CurrentUserResponse>) => void;
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<CurrentUserResponse | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  const refreshUser = async () => {
+    try {
+      const storedToken = await getAuthToken();
+      if (!storedToken) {
+        setUser(null);
+        setToken(null);
+        return;
+      }
+      setToken(storedToken);
+      const me = await authApi.getMe();
+      setUser(me);
+    } catch (error) {
+      console.warn('[AuthProvider] Session expired or invalid:', error);
+      await removeAuthToken();
+      setUser(null);
+      setToken(null);
+    }
+  };
+
+  useEffect(() => {
+    const unsubscribe = onUnauthorized(() => {
+      setUser(null);
+      setToken(null);
+      clearActiveScope();
+    });
+    return unsubscribe;
+  }, []);
+
+  useEffect(() => {
+    const initAuth = async () => {
+      try {
+        await refreshUser();
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    initAuth();
+  }, []);
+
+  const login = async (credentials: LoginRequest): Promise<CurrentUserResponse> => {
+    const authRes = await authApi.login(credentials);
+    setToken(authRes.token ?? null);
+    const me = await authApi.getMe();
+    setUser(me);
+    return me;
+  };
+
+  const registerPatient = async (request: RegisterPatientRequest): Promise<CurrentUserResponse> => {
+    const authRes = await authApi.registerPatient(request);
+    setToken(authRes.token ?? null);
+    const me = await authApi.getMe();
+    setUser(me);
+    return me;
+  };
+
+  const registerDoctor = async (request: RegisterDoctorRequest): Promise<CurrentUserResponse> => {
+    const authRes = await authApi.registerDoctor(request);
+    try {
+      if (!authRes.token) throw new Error('Missing registration token');
+      const me = await authApi.getMe();
+      if (me.role !== 'ROLE_DOCTOR') throw new Error('Unexpected account role');
+      setToken(authRes.token);
+      setUser(me);
+      return me;
+    } catch {
+      await removeAuthToken();
+      setToken(null);
+      setUser(null);
+      throw new Error('Your account was created, but automatic sign-in could not finish. Please sign in with your new credentials.');
+    }
+  };
+
+  const logout = async () => {
+    try {
+      await authApi.logout();
+    } finally {
+      clearActiveScope();
+      setUser(null);
+      setToken(null);
+    }
+  };
+
+  const updateUserLocally = (partial: Partial<CurrentUserResponse>) => {
+    setUser((prev) => (prev ? { ...prev, ...partial } : null));
+  };
+
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        token,
+        isLoading,
+        isAuthenticated: !!user && !!token,
+        login,
+        registerPatient,
+        registerDoctor,
+        logout,
+        refreshUser,
+        updateUserLocally,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+}
