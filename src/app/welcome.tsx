@@ -14,6 +14,7 @@ import { AppMark } from '@/components/app-mark';
 import { AppTheme, Colors, Fonts } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useDoctorRegistration } from '@/hooks/use-doctor-registration';
+import { clinicianSignInHref } from '@/utils/portal-routes';
 
 export default function WelcomeScreen() {
   const theme = useTheme();
@@ -57,8 +58,10 @@ export default function WelcomeScreen() {
 
             <TouchableOpacity
               style={styles.clinicianLink}
-              onPress={handleClinicianPortal}
+              // Web: returning clinicians sign in (registration is linked from there). Native keeps opening the website.
+              onPress={() => (Platform.OS === 'web' ? router.push(clinicianSignInHref()) : handleClinicianPortal())}
               activeOpacity={0.6}
+              accessibilityRole="link"
             >
               <Text style={styles.clinicianLinkText}>Doctor & clinician portal →</Text>
             </TouchableOpacity>
@@ -173,6 +176,6 @@ const createStyles = (theme: AppTheme) =>
   clinicianLinkText: {
     fontSize: 13,
     fontFamily: Fonts.sans.medium,
-    color: theme.textTertiary,
+    color: theme.textMuted,
   },
 });

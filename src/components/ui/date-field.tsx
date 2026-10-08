@@ -20,24 +20,14 @@ const DEFAULT_QUICK: QuickOption[] = [
 ];
 
 function toIsoDate(d: Date): string {
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  return d.toISOString().slice(0, 10);
 }
 
 function formatDisplay(iso?: string): string {
   if (!iso) return '';
-  if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) {
-    const [y, m, d] = iso.split('-').map(Number);
-    const dateObj = new Date(y, m - 1, d);
-    if (!Number.isNaN(dateObj.getTime())) {
-      return dateObj.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-    }
-  }
-  const fallback = new Date(iso);
-  if (Number.isNaN(fallback.getTime())) return iso;
-  return fallback.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  const d = new Date(`${iso}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 export function DateField({ value, onChange, quickOptions = DEFAULT_QUICK }: DateFieldProps) {
@@ -58,17 +48,9 @@ export function DateField({ value, onChange, quickOptions = DEFAULT_QUICK }: Dat
       setManualOpen(false);
       return;
     }
-    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
-      const [y, m, d] = trimmed.split('-').map(Number);
-      const parsed = new Date(y, m - 1, d);
-      if (!Number.isNaN(parsed.getTime())) {
-        onChange(toIsoDate(parsed));
-      }
-    } else {
-      const parsed = new Date(trimmed);
-      if (!Number.isNaN(parsed.getTime())) {
-        onChange(toIsoDate(parsed));
-      }
+    const parsed = new Date(`${trimmed}T00:00:00`);
+    if (!Number.isNaN(parsed.getTime())) {
+      onChange(toIsoDate(parsed));
     }
     setManualOpen(false);
   };

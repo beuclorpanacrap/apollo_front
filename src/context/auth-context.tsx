@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { authApi, CurrentUserResponse, LoginRequest, RegisterPatientRequest, RegisterDoctorRequest } from '@/api/auth.api';
-import { getAuthToken, removeAuthToken, onUnauthorized } from '@/api/client';
-import { clearActiveScope } from '@/utils/local-records-store';
+import { getAuthToken, removeAuthToken } from '@/api/client';
 
 interface AuthContextType {
   user: CurrentUserResponse | null;
@@ -41,15 +40,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setToken(null);
     }
   };
-
-  useEffect(() => {
-    const unsubscribe = onUnauthorized(() => {
-      setUser(null);
-      setToken(null);
-      clearActiveScope();
-    });
-    return unsubscribe;
-  }, []);
 
   useEffect(() => {
     const initAuth = async () => {
@@ -99,7 +89,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await authApi.logout();
     } finally {
-      clearActiveScope();
       setUser(null);
       setToken(null);
     }

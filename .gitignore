@@ -4,8 +4,7 @@
 node_modules/
 
 # Expo
-.expo/*
-!.expo/types/
+.expo/
 dist/
 web-build/
 coverage/
@@ -38,8 +37,8 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
-example
 
 # generated native folders
 /ios
 /android
+.env

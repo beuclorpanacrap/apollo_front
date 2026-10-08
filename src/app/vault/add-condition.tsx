@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,18 +7,15 @@ import { useRouter } from 'expo-router';
 import { Button } from '@/components/ui/button';
 import { DateField } from '@/components/ui/date-field';
 import type { CreateHealthConditionRequest } from '@/api/vault.api';
-import { AppTheme, BrandColors, Fonts, Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+import { BrandColors, Colors, Fonts, Spacing } from '@/constants/theme';
 import { useVault } from '@/context/vault-context';
+
+const theme = Colors.light;
 
 type ConditionType = CreateHealthConditionRequest['type'];
 
 function todayIso(): string {
-  const d = new Date();
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  return new Date().toISOString().slice(0, 10);
 }
 
 const TYPE_OPTIONS: { value: ConditionType; label: string; color: string }[] = [
@@ -28,8 +25,6 @@ const TYPE_OPTIONS: { value: ConditionType; label: string; color: string }[] = [
 ];
 
 export default function AddConditionScreen() {
-  const theme = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
   const router = useRouter();
   const { addCondition } = useVault();
 
@@ -119,53 +114,51 @@ export default function AddConditionScreen() {
   );
 }
 
-function createStyles(theme: AppTheme) {
-  return StyleSheet.create({
-    safeArea: { flex: 1, backgroundColor: theme.background },
-    header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: 12,
-      paddingVertical: 10,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.border,
-    },
-    headerButton: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-    headerTitle: { fontSize: 17, fontFamily: Fonts.sans.bold, fontWeight: '700', color: theme.text },
-    content: { padding: 20, paddingBottom: 40, maxWidth: 600, alignSelf: 'center', width: '100%' },
-    field: { marginBottom: Spacing.four },
-    label: { fontSize: 13, fontFamily: Fonts.sans.semiBold, fontWeight: '600', color: theme.text, marginBottom: 8 },
-    heroField: { marginBottom: Spacing.five },
-    heroLabel: {
-      fontSize: 13,
-      fontFamily: Fonts.sans.medium,
-      fontWeight: '500',
-      color: theme.textSecondary,
-      marginBottom: 6,
-    },
-    heroInput: {
-      fontSize: 24,
-      fontFamily: Fonts.sans.bold,
-      fontWeight: '700',
-      color: theme.text,
-      paddingVertical: 8,
-      borderBottomWidth: 2.5,
-    },
-    typeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-    typeChip: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: 12, borderWidth: 1.5 },
-    typeChipText: { fontSize: 13, fontFamily: Fonts.sans.semiBold, fontWeight: '600' },
-    input: {
-      borderWidth: 1,
-      borderColor: theme.border,
-      borderRadius: 12,
-      paddingHorizontal: Spacing.three,
-      paddingVertical: 12,
-      fontSize: 14,
-      fontFamily: Fonts.sans.regular,
-      color: theme.text,
-      backgroundColor: theme.backgroundElement,
-    },
-    footer: { padding: 16, borderTopWidth: 1, borderTopColor: theme.border, backgroundColor: theme.background },
-  });
-}
+const styles = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: theme.background },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.border,
+  },
+  headerButton: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { fontSize: 17, fontFamily: Fonts.sans.bold, fontWeight: '700', color: theme.text },
+  content: { padding: 20, paddingBottom: 40, maxWidth: 600, alignSelf: 'center', width: '100%' },
+  field: { marginBottom: Spacing.four },
+  label: { fontSize: 13, fontFamily: Fonts.sans.semiBold, fontWeight: '600', color: theme.text, marginBottom: 8 },
+  heroField: { marginBottom: Spacing.five },
+  heroLabel: {
+    fontSize: 13,
+    fontFamily: Fonts.sans.medium,
+    fontWeight: '500',
+    color: theme.textSecondary,
+    marginBottom: 6,
+  },
+  heroInput: {
+    fontSize: 24,
+    fontFamily: Fonts.sans.bold,
+    fontWeight: '700',
+    color: theme.text,
+    paddingVertical: 8,
+    borderBottomWidth: 2.5,
+  },
+  typeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  typeChip: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: 12, borderWidth: 1.5 },
+  typeChipText: { fontSize: 13, fontFamily: Fonts.sans.semiBold, fontWeight: '600' },
+  input: {
+    borderWidth: 1,
+    borderColor: theme.border,
+    borderRadius: 12,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: 12,
+    fontSize: 14,
+    fontFamily: Fonts.sans.regular,
+    color: theme.text,
+    backgroundColor: theme.backgroundElement,
+  },
+  footer: { padding: 16, borderTopWidth: 1, borderTopColor: theme.border, backgroundColor: theme.background },
+});

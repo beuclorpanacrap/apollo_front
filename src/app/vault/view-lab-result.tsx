@@ -7,15 +7,14 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Badge, IconBubble } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DetailRow } from '@/components/ui/detail-row';
-import { AppTheme, BrandColors, Fonts, Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+import { BrandColors, Colors, Fonts, Spacing } from '@/constants/theme';
 import { useVault } from '@/context/vault-context';
 import { confirmAsync } from '@/utils/confirm';
 import { formatDateLabel } from '@/utils/vault-display';
 
+const theme = Colors.light;
+
 export default function ViewLabResultScreen() {
-  const theme = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { localLabResults, testResults, removeLabResult } = useVault();
@@ -141,30 +140,28 @@ export default function ViewLabResultScreen() {
   );
 }
 
-function createStyles(theme: AppTheme) {
-  return StyleSheet.create({
-    safeArea: { flex: 1, backgroundColor: theme.background },
-    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, paddingVertical: 10 },
-    headerButton: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-    scroll: { paddingBottom: 40 },
-    hero: { alignItems: 'center', paddingTop: 8, paddingBottom: 28, paddingHorizontal: 24, gap: 10 },
-    heroTitle: { fontSize: 24, fontFamily: Fonts.display, fontWeight: '800', color: theme.text, textAlign: 'center' },
-    statRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 6, marginTop: 4 },
-    statValue: { fontSize: 48, fontFamily: Fonts.sans.extraBold, fontWeight: '800', color: theme.text, lineHeight: 52 },
-    statUnit: { fontSize: 18, fontFamily: Fonts.sans.semiBold, fontWeight: '600', color: theme.textSecondary, marginBottom: 8 },
-    statRange: { fontSize: 12, fontFamily: Fonts.sans.medium, fontWeight: '500', color: theme.textTertiary, marginTop: -6 },
-    content: { padding: 24, maxWidth: 600, alignSelf: 'center', width: '100%' },
-    actionsRow: { flexDirection: 'row', gap: 10, marginTop: Spacing.four },
-    readOnlyNote: {
-      flexDirection: 'row',
-      gap: 10,
-      backgroundColor: theme.pillGreenBg,
-      borderRadius: 12,
-      padding: 14,
-      marginTop: Spacing.two,
-    },
-    readOnlyNoteText: { flex: 1, fontSize: 12, fontFamily: Fonts.sans.regular, color: theme.pillGreenText, lineHeight: 17 },
-    notFoundBody: { padding: 32, alignItems: 'center', gap: 10 },
-    notFoundText: { fontSize: 14, fontFamily: Fonts.sans.regular, color: theme.textSecondary, textAlign: 'center' },
-  });
-}
+const styles = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: theme.background },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, paddingVertical: 10 },
+  headerButton: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  scroll: { paddingBottom: 40 },
+  hero: { alignItems: 'center', paddingTop: 8, paddingBottom: 28, paddingHorizontal: 24, gap: 10 },
+  heroTitle: { fontSize: 24, fontFamily: Fonts.display, fontWeight: '800', color: theme.text, textAlign: 'center' },
+  statRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 6, marginTop: 4 },
+  statValue: { fontSize: 48, fontFamily: Fonts.sans.extraBold, fontWeight: '800', color: theme.text, lineHeight: 52 },
+  statUnit: { fontSize: 18, fontFamily: Fonts.sans.semiBold, fontWeight: '600', color: theme.textSecondary, marginBottom: 8 },
+  statRange: { fontSize: 12, fontFamily: Fonts.sans.medium, fontWeight: '500', color: theme.textTertiary, marginTop: -6 },
+  content: { padding: 24, maxWidth: 600, alignSelf: 'center', width: '100%' },
+  actionsRow: { flexDirection: 'row', gap: 10, marginTop: Spacing.four },
+  readOnlyNote: {
+    flexDirection: 'row',
+    gap: 10,
+    backgroundColor: theme.pillGreenBg,
+    borderRadius: 12,
+    padding: 14,
+    marginTop: Spacing.two,
+  },
+  readOnlyNoteText: { flex: 1, fontSize: 12, fontFamily: Fonts.sans.regular, color: theme.pillGreenText, lineHeight: 17 },
+  notFoundBody: { padding: 32, alignItems: 'center', gap: 10 },
+  notFoundText: { fontSize: 14, fontFamily: Fonts.sans.regular, color: theme.textSecondary, textAlign: 'center' },
+});

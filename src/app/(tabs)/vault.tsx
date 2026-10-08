@@ -8,19 +8,17 @@ import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Pagination } from '@/components/ui/pagination';
 import { EntryCard } from '@/components/vault/entry-card';
-import { EncounterCard } from '@/components/vault/encounter-card';
 import { AppTheme, BrandColors, Fonts, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useVault } from '@/context/vault-context';
 import type { VaultDisplayEntry } from '@/utils/vault-display';
 
-type TabKey = 'prescriptions' | 'labs' | 'conditions' | 'encounters';
+type TabKey = 'prescriptions' | 'labs' | 'conditions';
 
 const TABS: { key: TabKey; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
   { key: 'prescriptions', label: 'Prescriptions', icon: 'medical' },
   { key: 'labs', label: 'Test Results', icon: 'flask' },
   { key: 'conditions', label: 'Conditions', icon: 'clipboard' },
-  { key: 'encounters', label: 'Consults', icon: 'chatbubbles' },
 ];
 
 type RxFilter = 'ALL' | 'ACTIVE' | 'FULFILLED';
@@ -128,7 +126,7 @@ export default function VaultScreen() {
   const styles = useMemo(() => createStyles(theme), [theme]);
   const router = useRouter();
   const params = useLocalSearchParams<{ tab?: string }>();
-  const { isLoading, isRefreshing, error, refresh, prescriptionEntries, labResultEntries, conditionEntries, encounters } =
+  const { isLoading, isRefreshing, error, refresh, prescriptionEntries, labResultEntries, conditionEntries } =
     useVault();
 
   const [activeTab, setActiveTab] = useState<TabKey>('prescriptions');
@@ -152,37 +150,6 @@ export default function VaultScreen() {
     }
     return orderEntries(activeTab === 'labs' ? labResultEntries : visibleConditionEntries, orderBy);
   }, [activeTab, prescriptionEntries, labResultEntries, visibleConditionEntries, rxFilter, orderBy]);
-
-  const orderedEncounters = useMemo(() => {
-    return [...encounters].sort((a, b) => {
-      const dateA = a.encounterDate || a.createdAt || '';
-      const dateB = b.encounterDate || b.createdAt || '';
-      if (orderBy === 'oldest') return dateA.localeCompare(dateB);
-      if (orderBy === 'nameAsc') return (a.doctorName || '').localeCompare(b.doctorName || '');
-      if (orderBy === 'nameDesc') return (b.doctorName || '').localeCompare(a.doctorName || '');
-      return dateB.localeCompare(dateA);
-    });
-  }, [encounters, orderBy]);
-
-  const matchingEncounters = useMemo(() => {
-    if (activeTab !== 'encounters') return [];
-    const queryTokens = searchQuery.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
-    if (queryTokens.length === 0) return orderedEncounters;
-    return orderedEncounters.filter((enc) => {
-      const searchable = [
-        enc.diagnosis,
-        enc.doctorName,
-        enc.doctorSpecialty,
-        enc.clinicalNotes,
-        enc.encounterDate,
-      ]
-        .filter(Boolean)
-        .join(' ')
-        .toLocaleLowerCase();
-      return queryTokens.every((token) => searchable.includes(token));
-    });
-  }, [activeTab, orderedEncounters, searchQuery]);
-
   const searchResults = useMemo(() => {
     const queryTokens = searchQuery.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
     if (queryTokens.length === 0) return [];
@@ -212,7 +179,7 @@ export default function VaultScreen() {
   // Lets Home's "jump to prescriptions" shortcut land on a specific tab in
   // one tap instead of landing on Vault and requiring a second tap.
   useEffect(() => {
-    if (params.tab === 'prescriptions' || params.tab === 'labs' || params.tab === 'conditions' || params.tab === 'encounters') {
+    if (params.tab === 'prescriptions' || params.tab === 'labs' || params.tab === 'conditions') {
       setActiveTab(params.tab);
       setSearchQuery('');
     }
@@ -277,7 +244,7 @@ export default function VaultScreen() {
             <TextInput
               value={searchQuery}
               onChangeText={setSearchQuery}
-              placeholder={`Search ${activeTab === 'labs' ? 'test results' : activeTab === 'encounters' ? 'consultations' : activeTab}`}
+              placeholder={`Search ${activeTab === 'labs' ? 'test results' : activeTab}`}
               placeholderTextColor={theme.textTertiary}
               style={styles.searchInput}
               returnKeyType="search"
@@ -333,45 +300,24 @@ export default function VaultScreen() {
         {isLoading ? (
           <ActivityIndicator color={theme.tintStrong} style={{ marginTop: 40 }} />
         ) : searchQuery.trim() ? (
-          activeTab === 'encounters' ? (
-            <>
-              <Text style={styles.searchResultsTitle}>
-                {matchingEncounters.length} {matchingEncounters.length === 1 ? 'result' : 'results'} in Consults
-              </Text>
-              {matchingEncounters.length === 0 ? (
-                <EmptyState
-                  icon="search"
-                  title="No matching consults"
-                  description="Try another word in this section."
-                />
-              ) : (
-                <View style={styles.list}>
-                  {matchingEncounters.map((encounter) => (
-                    <EncounterCard key={encounter.id || `enc_${encounter.createdAt}`} encounter={encounter} />
-                  ))}
-                </View>
-              )}
-            </>
-          ) : (
-            <>
-              <Text style={styles.searchResultsTitle}>
-                {searchResults.length} {searchResults.length === 1 ? 'result' : 'results'} in {TABS.find((tab) => tab.key === activeTab)?.label}
-              </Text>
-              {searchResults.length === 0 ? (
-                <EmptyState
-                  icon="search"
-                  title="No matching records"
-                  description="Try another word in this section."
-                />
-              ) : (
-                <View style={styles.list}>
-                  {searchResults.map((entry) => (
-                    <EntryCard key={`${entry.kind}-${entry.id}`} entry={entry} />
-                  ))}
-                </View>
-              )}
-            </>
-          )
+          <>
+            <Text style={styles.searchResultsTitle}>
+              {searchResults.length} {searchResults.length === 1 ? 'result' : 'results'} in {TABS.find((tab) => tab.key === activeTab)?.label}
+            </Text>
+            {searchResults.length === 0 ? (
+              <EmptyState
+                icon="search"
+                title="No matching records"
+                description="Try another word in this section."
+              />
+            ) : (
+              <View style={styles.list}>
+                {searchResults.map((entry) => (
+                  <EntryCard key={`${entry.kind}-${entry.id}`} entry={entry} />
+                ))}
+              </View>
+            )}
+          </>
         ) : (
           <>
             {activeTab === 'prescriptions' && (
@@ -487,24 +433,6 @@ export default function VaultScreen() {
                     styles={styles}
                   />
                 ) : null}
-              </>
-            )}
-
-            {activeTab === 'encounters' && (
-              <>
-                {orderedEncounters.length === 0 ? (
-                  <EmptyState
-                    icon="chatbubbles"
-                    title="No consultation summaries yet"
-                    description="Summaries and clinical notes from your doctor consultations will appear here."
-                  />
-                ) : (
-                  <View style={styles.list}>
-                    {orderedEncounters.map((encounter) => (
-                      <EncounterCard key={encounter.id || `enc_${encounter.createdAt}`} encounter={encounter} />
-                    ))}
-                  </View>
-                )}
               </>
             )}
           </>
