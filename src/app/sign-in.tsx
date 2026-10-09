@@ -3,8 +3,9 @@ import { AppTheme, Colors, Fonts } from "@/constants/theme";
 import { useAuth } from "@/context/auth-context";
 import { useTheme } from "@/hooks/use-theme";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState, useMemo } from "react";
+import { safePortalNext } from "@/utils/portal-routes";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -22,6 +23,9 @@ export default function SignInScreen() {
   const styles = useMemo(() => createStyles(theme), [theme]);
   const router = useRouter();
   const { login } = useAuth();
+  // `/sign-in?portal=clinician[&next=/doctor-profile]` is the clinician entry. Patients use plain `/sign-in`.
+  const { portal, next } = useLocalSearchParams<{ portal?: string; next?: string }>();
+  const clinician = portal === "clinician";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -39,7 +43,7 @@ export default function SignInScreen() {
     try {
       setIsSubmitting(true);
       const user = await login({ email: email.trim(), password });
-      router.replace(user.role === 'ROLE_DOCTOR' ? '/doctor' : '/(tabs)');
+      router.replace(user.role === 'ROLE_DOCTOR' ? (safePortalNext(next) ?? '/doctor') : '/(tabs)');
     } catch (err: any) {
       setErrorMessage(
         err.message || "Login failed. Please verify credentials.",
@@ -63,17 +67,18 @@ export default function SignInScreen() {
             <AppMark size={64} />
           </View>
 
-          <Text style={styles.title}>Your health records,</Text>
-          <Text style={styles.titleAccent}>securely in one place.</Text>
+          <Text style={styles.title}>{clinician ? "Welcome back," : "Your health records,"}</Text>
+          <Text style={styles.titleAccent}>{clinician ? "to your clinical workspace." : "securely in one place."}</Text>
           <Text style={styles.subtitle}>
-            Apollo keeps your medical information organized, private, and
-            accessible whenever you need it.
+            {clinician
+              ? "Sign in to open patient vaults with a consultation PIN and document care."
+              : "Apollo keeps your medical information organized, private, and accessible whenever you need it."}
           </Text>
 
           {errorMessage && (
-            <View style={styles.errorContainer}>
-              <Ionicons name="alert-circle" size={18} color={theme.danger} />
-              <Text style={styles.errorText}>{errorMessage}</Text>
+            <View style={styles.errorContainer} accessibilityRole="alert">
+              <Ionicons name="alert-circle" size={18} color={clinician ? theme.dangerText : theme.danger} />
+              <Text style={[styles.errorText, clinician && { color: theme.dangerText }]}>{errorMessage}</Text>
             </View>
           )}
 
@@ -86,6 +91,8 @@ export default function SignInScreen() {
             onChangeText={setEmail}
             autoCapitalize="none"
             keyboardType="email-address"
+            autoComplete="email"
+            accessibilityLabel="Email address"
             editable={!isSubmitting}
           />
 
@@ -98,9 +105,16 @@ export default function SignInScreen() {
               value={password}
               onChangeText={setPassword}
               secureTextEntry={!showPassword}
+              autoComplete="current-password"
+              accessibilityLabel="Password"
+              onSubmitEditing={handleSignIn}
               editable={!isSubmitting}
             />
-            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+            <TouchableOpacity
+              onPress={() => setShowPassword(!showPassword)}
+              accessibilityRole="button"
+              accessibilityLabel={showPassword ? "Hide password" : "Show password"}
+            >
               <Ionicons
                 name={showPassword ? "eye" : "eye-off"}
                 size={20}
@@ -124,12 +138,29 @@ export default function SignInScreen() {
             )}
           </TouchableOpacity>
 
-          <Text style={styles.footer}>
-            Don't have an account?{" "}
-            <Text style={styles.link} onPress={() => router.push("/sign-up")}>
-              Sign Up
+          {clinician ? (
+            <>
+              <Text style={styles.footer}>
+                New to Apollo?{" "}
+                <Text style={styles.link} accessibilityRole="link" onPress={() => router.push("/register-doctor")}>
+                  Create a clinician account
+                </Text>
+              </Text>
+              <Text style={styles.footer}>
+                Patient?{" "}
+                <Text style={styles.link} accessibilityRole="link" onPress={() => router.replace("/welcome")}>
+                  Sign in from the main page.
+                </Text>
+              </Text>
+            </>
+          ) : (
+            <Text style={styles.footer}>
+              Don't have an account?{" "}
+              <Text style={styles.link} onPress={() => router.push("/sign-up")}>
+                Sign Up
+              </Text>
             </Text>
-          </Text>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </View>

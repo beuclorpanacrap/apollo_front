@@ -1,22 +1,22 @@
 import { Redirect } from 'expo-router';
 
-import { activeVault } from '@/api/doctor.api';
 import { apiClient } from '@/api/client';
 import NewLabResultScreen from '@/components/screens/NewLabResultScreen';
 import { allFields } from '@/components/evaluate';
 import { getTemplate } from '@/components/templates';
 import type { LabResultPayload } from '@/components/types';
 import { useAuth } from '@/context/auth-context';
+import { useClinicianVault } from '@/context/clinician-vault-context';
 import { patientContext } from '@/utils/patient-context';
 
 export default function DoctorLabResultScreen() {
   const { user, isAuthenticated, isLoading } = useAuth();
+  const { vault, addRecord } = useClinicianVault();
   if (isLoading) return null;
   if (!isAuthenticated) return <Redirect href="/welcome" />;
   if (user?.role !== 'ROLE_DOCTOR') return <Redirect href="/(tabs)" />;
-  if (!activeVault?.patient?.id) return <Redirect href="/doctor" />;
-  const vault = activeVault;
-  const patientId = activeVault.patient.id;
+  if (!vault?.patient?.id) return <Redirect href="/doctor" />;
+  const patientId = vault.patient.id;
 
   // The backend stores one numeric value per record, so each numeric entry becomes its own test result.
   async function save(payload: LabResultPayload) {
@@ -39,7 +39,8 @@ export default function DoctorLabResultScreen() {
           recordedAt,
         },
       });
-      vault.testResults = [...(vault.testResults ?? []), result];
+      // Appends immutably and flags the record as just added, so the clinician portal updates and highlights it.
+      addRecord('lab', result);
     }
   }
 

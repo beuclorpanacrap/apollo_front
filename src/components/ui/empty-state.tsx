@@ -12,20 +12,49 @@ type EmptyStateProps = {
   description: string;
   actionLabel?: string;
   onAction?: () => void;
+  /** Icon on the action button (default `add`). */
+  actionIcon?: ComponentProps<typeof Ionicons>['name'];
+  /** Description size; the patient default stays 13px, the portal uses 14px. */
+  descriptionSize?: number;
+  /** `strong` uses `textMuted` (≥ 4.5:1); `default` keeps the patient app's `textSecondary`. */
+  tone?: 'default' | 'strong';
+  /** Opt-in portal sizing for the action button. */
+  portal?: boolean;
 };
 
-export function EmptyState({ icon, title, description, actionLabel, onAction }: EmptyStateProps) {
+export function EmptyState({
+  icon,
+  title,
+  description,
+  actionLabel,
+  onAction,
+  actionIcon = 'add',
+  descriptionSize = 13,
+  tone = 'default',
+  portal,
+}: EmptyStateProps) {
   const theme = useTheme();
   return (
     <View style={styles.container}>
       <View style={[styles.iconWrap, { backgroundColor: theme.pillGreenBg }]}>
-        <Ionicons name={icon} size={30} color={theme.tintStrong} />
+        <Ionicons name={icon} size={30} color={portal ? theme.accentText : theme.tintStrong} />
       </View>
       <Text style={[styles.title, { color: theme.text }]}>{title}</Text>
-      <Text style={[styles.description, { color: theme.textSecondary }]}>{description}</Text>
+      <Text
+        style={[
+          styles.description,
+          {
+            color: tone === 'strong' ? theme.textMuted : theme.textSecondary,
+            fontSize: descriptionSize,
+            lineHeight: Math.round(descriptionSize * 1.45),
+          },
+        ]}
+      >
+        {description}
+      </Text>
       {actionLabel && onAction ? (
         <View style={styles.actionWrap}>
-          <Button label={actionLabel} icon="add" onPress={onAction} />
+          <Button label={actionLabel} icon={actionIcon} onPress={onAction} portal={portal} />
         </View>
       ) : null}
     </View>
@@ -50,10 +79,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   description: {
-    fontSize: 13,
     fontFamily: Fonts.sans.regular,
     textAlign: 'center',
-    lineHeight: 19,
     maxWidth: 320,
   },
   actionWrap: { marginTop: Spacing.four, width: '100%', maxWidth: 280 },
