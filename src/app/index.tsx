@@ -1,71 +1,182 @@
+// `/` and `/welcome` both render this screen (src/app/welcome.tsx re-exports it).
+import React, { useMemo } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Platform,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-export default function IndexRoute() {
+import { AppMark } from '@/components/app-mark';
+import { AppTheme, Colors, Fonts } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
+import { useDoctorRegistration } from '@/hooks/use-doctor-registration';
+import { clinicianSignInHref } from '@/utils/portal-routes';
+
+export default function WelcomeScreen() {
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const router = useRouter();
+
+  const handleClinicianPortal = useDoctorRegistration();
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        <View style={styles.centerSection}>
-          <Text style={styles.appTitle}>Apollo</Text>
-          <Text style={styles.subtitle}>Keep your health records in one place.</Text>
-        </View>
+        <View style={styles.centeredGroup}>
+          {/* Branding & Identity */}
+          <View style={styles.centerSection}>
+            <View style={styles.logoBadge}>
+              <AppMark size={96} />
+            </View>
+            <Text style={styles.appTitle}>Apollo</Text>
+            <Text style={styles.subtitle}>Keep your health records in one place.</Text>
+          </View>
 
-        <View style={styles.actions}>
-          <TouchableOpacity style={styles.primaryButton} onPress={() => router.push('/sign-in')}>
-            <Ionicons name="log-in" size={20} color="#FFFFFF" />
-            <Text style={styles.primaryText}>Sign In</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.secondaryButton} onPress={() => router.push('/sign-up')}>
-            <Ionicons name="person-add" size={19} color="#2E5C40" />
-            <Text style={styles.secondaryText}>Create Account</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.doctorLink} onPress={() => router.push('/register-doctor')}>
-            <Text style={styles.doctorText}>Doctor & clinician portal →</Text>
-          </TouchableOpacity>
+          {/* Action Section */}
+          <View style={styles.actionSection}>
+            <TouchableOpacity
+              style={styles.primaryButton}
+              onPress={() => router.push('/sign-in')}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="log-in" size={20} color={theme.onTint} />
+              <Text style={styles.primaryButtonText}>Sign In</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.secondaryButton}
+              onPress={() => router.push('/sign-up')}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="person-add" size={19} color={theme.tintStrong} />
+              <Text style={styles.secondaryButtonText}>Create Account</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.clinicianLink}
+              // Web: returning clinicians sign in (registration is linked from there). Native keeps opening the website.
+              onPress={() => (Platform.OS === 'web' ? router.push(clinicianSignInHref()) : handleClinicianPortal())}
+              activeOpacity={0.6}
+              accessibilityRole="link"
+            >
+              <Text style={styles.clinicianLinkText}>Doctor & clinician portal →</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#FBF6E8' },
+const createStyles = (theme: AppTheme) =>
+  StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: theme.background,
+  },
   container: {
     flex: 1,
-    width: '100%',
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    justifyContent: 'center',
     maxWidth: 500,
     alignSelf: 'center',
-    justifyContent: 'center',
-    padding: 24,
+    width: '100%',
   },
-  centerSection: { alignItems: 'center', marginBottom: 48 },
-  appTitle: { color: '#2E5C40', fontSize: 30, fontWeight: '800' },
-  subtitle: { color: '#6E7F73', fontSize: 15, marginTop: 8, textAlign: 'center' },
-  actions: { gap: 12 },
+  centeredGroup: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  centerSection: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 48,
+  },
+  logoBadge: {
+    width: 96,
+    height: 96,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  appTitle: {
+    fontSize: 30,
+    fontFamily: Fonts.display,
+    fontWeight: '800',
+    color: theme.text,
+    textAlign: 'center',
+    letterSpacing: -0.5,
+  },
+  subtitle: {
+    fontSize: 15,
+    fontFamily: Fonts.sans.medium,
+    color: theme.textSecondary,
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  actionSection: {
+    width: '100%',
+    gap: 12,
+    paddingBottom: 8,
+  },
   primaryButton: {
-    alignItems: 'center',
-    backgroundColor: '#4FAE72',
-    borderRadius: 14,
     flexDirection: 'row',
-    gap: 8,
+    alignItems: 'center',
     justifyContent: 'center',
+    gap: 8,
+    backgroundColor: theme.tint,
+    borderRadius: 14,
     paddingVertical: 16,
+    width: '100%',
+    ...Platform.select({
+      web: {
+        boxShadow: '0 4px 8px rgba(79, 174, 114, 0.25)',
+      },
+      default: {
+        shadowColor: theme.tint,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.25,
+        shadowRadius: 8,
+        elevation: 3,
+      },
+    }),
   },
-  primaryText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
+  primaryButtonText: {
+    color: theme.onTint,
+    fontSize: 16,
+    fontFamily: Fonts.sans.bold,
+    fontWeight: '700',
+  },
   secondaryButton: {
-    alignItems: 'center',
-    backgroundColor: '#E4F2E8',
-    borderRadius: 14,
     flexDirection: 'row',
-    gap: 8,
+    alignItems: 'center',
     justifyContent: 'center',
+    gap: 8,
+    backgroundColor: theme.pillGreenBg,
+    borderRadius: 14,
     paddingVertical: 16,
+    width: '100%',
   },
-  secondaryText: { color: '#2E5C40', fontSize: 16, fontWeight: '700' },
-  doctorLink: { alignItems: 'center', paddingVertical: 10 },
-  doctorText: { color: '#819088', fontSize: 13 },
+  secondaryButtonText: {
+    color: theme.tintStrong,
+    fontSize: 16,
+    fontFamily: Fonts.sans.bold,
+    fontWeight: '700',
+  },
+  clinicianLink: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    marginTop: 2,
+  },
+  clinicianLinkText: {
+    fontSize: 13,
+    fontFamily: Fonts.sans.medium,
+    color: theme.textMuted,
+  },
 });

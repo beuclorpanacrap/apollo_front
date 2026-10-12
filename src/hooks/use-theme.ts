@@ -18,3 +18,13 @@ export function useTheme() {
 }
 
 export { useThemeContext } from '../context/theme-context';
+
+/** True when the resolved theme is dark (Settings choice, or the OS scheme when no provider is mounted). */
+export function useIsDark(): boolean {
+  try {
+    const { isDark } = useThemeContext();
+    return isDark;
+  } catch {
+    return useColorScheme() === 'dark';
+  }
+}

@@ -19,14 +19,10 @@ import { useAuth } from '@/context/auth-context';
 import { ThemeMode } from '@/context/theme-context';
 import { ThemedDatePicker } from '@/components/themed-date-picker';
 import { vaultApi } from '@/api/vault.api';
+import { PRIVACY_POLICY, TERMS_OF_SERVICE, type PolicyContent } from '@/content/legal';
+import { PolicyModal } from '@/components/ui/policy-modal';
 import { AppTheme, Fonts } from '@/constants/theme';
 import { useThemeContext } from '@/hooks/use-theme';
-
-interface PolicyModalContent {
-  title: string;
-  subtitle: string;
-  sections: { heading: string; body: string }[];
-}
 
 export default function SettingsScreen() {
   const { theme, isDark, themeMode, setThemeMode } = useThemeContext();
@@ -54,7 +50,7 @@ export default function SettingsScreen() {
 
   // Modals State
   const [showLogoutModal, setShowLogoutModal] = useState<boolean>(false);
-  const [policyModal, setPolicyModal] = useState<PolicyModalContent | null>(null);
+  const [policyModal, setPolicyModal] = useState<PolicyContent | null>(null);
 
   // Profile Edit Modals State
   const [showNameModal, setShowNameModal] = useState<boolean>(false);
@@ -181,47 +177,9 @@ export default function SettingsScreen() {
     }
   };
 
-  const openPrivacyPolicy = () => {
-    setPolicyModal({
-      title: 'Privacy Policy',
-      subtitle: 'Patient Data Sovereignty & Encryption Commitment',
-      sections: [
-        {
-          heading: '1. Patient Sovereignty',
-          body: 'Your medical health vault belongs exclusively to you. Apollo does not sell, monetize, or broker patient data to advertisers, insurance underwriters, or data aggregators.',
-        },
-        {
-          heading: '2. Scoped Access Grants',
-          body: 'Clinicians cannot access your records without an active consultation authorization. Single-use 6-digit access PINs expire automatically after 15 minutes, unlocking a strictly scoped 24-hour consultation session.',
-        },
-        {
-          heading: '3. Immutable Record Integrity',
-          body: 'Encounter notes, diagnostic observations, and issued prescriptions are cryptographically append-only to guarantee non-repudiation and medical record integrity.',
-        },
-      ],
-    });
-  };
+  const openPrivacyPolicy = () => setPolicyModal(PRIVACY_POLICY);
 
-  const openTermsOfService = () => {
-    setPolicyModal({
-      title: 'Terms of Service',
-      subtitle: 'Apollo Vault Usage & Telemedicine Guidelines',
-      sections: [
-        {
-          heading: '1. Sovereign Record Storage',
-          body: 'By utilizing Apollo, you maintain ownership over all patient-declared baseline biometrics, allergy notifications, and lifestyle factors recorded in your personal vault.',
-        },
-        {
-          heading: '2. Clinical Authenticity',
-          body: 'Only verified medical practitioners holding accredited licenses verified by state or regional licensing boards may issue certified clinical diagnoses and prescriptions.',
-        },
-        {
-          heading: '3. Emergency Disclaimer',
-          body: 'Apollo Medical Vault is an encrypted personal health record platform. In the event of a medical emergency, immediately contact emergency services (e.g. 911 / 112) or proceed to the nearest emergency room.',
-        },
-      ],
-    });
-  };
+  const openTermsOfService = () => setPolicyModal(TERMS_OF_SERVICE);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -604,47 +562,7 @@ export default function SettingsScreen() {
       </Modal>
 
       {/* Policy / Terms Modal */}
-      <Modal
-        visible={!!policyModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setPolicyModal(null)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.policyDialogCard}>
-            <View style={styles.policyHeader}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.policyTitle}>{policyModal?.title}</Text>
-                <Text style={styles.policySubtitle}>{policyModal?.subtitle}</Text>
-              </View>
-              <TouchableOpacity
-                onPress={() => setPolicyModal(null)}
-                style={styles.policyCloseBtn}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="close" size={20} color={theme.textSecondary} />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView style={styles.policyScroll} showsVerticalScrollIndicator={false}>
-              {policyModal?.sections.map((sec, idx) => (
-                <View key={idx} style={styles.policySection}>
-                  <Text style={styles.policySectionHeading}>{sec.heading}</Text>
-                  <Text style={styles.policySectionBody}>{sec.body}</Text>
-                </View>
-              ))}
-            </ScrollView>
-
-            <TouchableOpacity
-              style={styles.policyDoneBtn}
-              onPress={() => setPolicyModal(null)}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.policyDoneBtnText}>Understood</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+      <PolicyModal content={policyModal} onClose={() => setPolicyModal(null)} />
     </SafeAreaView>
   );
 }
@@ -966,82 +884,5 @@ const createStyles = (theme: AppTheme, isDark: boolean) =>
       fontFamily: Fonts.sans.bold,
       fontWeight: '700',
       color: '#FFFFFF',
-    },
-    policyDialogCard: {
-      width: '100%',
-      maxWidth: 500,
-      maxHeight: '80%',
-      borderRadius: 20,
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.backgroundElement,
-      padding: 22,
-      ...Platform.select({
-        web: {
-          boxShadow: '0 4px 16px rgba(50, 122, 76, 0.16)',
-        },
-        default: {
-          shadowColor: theme.tintStrong,
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.16,
-          shadowRadius: 16,
-          elevation: 6,
-        },
-      }),
-    },
-    policyHeader: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      borderBottomWidth: 1,
-      borderBottomColor: theme.border,
-      paddingBottom: 14,
-      marginBottom: 14,
-    },
-    policyTitle: {
-      fontSize: 18,
-      fontFamily: Fonts.sans.bold,
-      fontWeight: '700',
-      color: theme.text,
-    },
-    policySubtitle: {
-      fontSize: 12,
-      fontFamily: Fonts.sans.regular,
-      color: theme.textSecondary,
-      marginTop: 2,
-    },
-    policyCloseBtn: {
-      padding: 4,
-      marginLeft: 8,
-    },
-    policyScroll: {
-      marginBottom: 16,
-    },
-    policySection: {
-      marginBottom: 14,
-    },
-    policySectionHeading: {
-      fontSize: 14,
-      fontFamily: Fonts.sans.bold,
-      fontWeight: '700',
-      color: theme.text,
-      marginBottom: 4,
-    },
-    policySectionBody: {
-      fontSize: 13,
-      fontFamily: Fonts.sans.regular,
-      color: theme.textSecondary,
-      lineHeight: 19,
-    },
-    policyDoneBtn: {
-      borderRadius: 12,
-      paddingVertical: 13,
-      alignItems: 'center',
-      backgroundColor: theme.tintStrong,
-    },
-    policyDoneBtnText: {
-      fontSize: 14,
-      fontFamily: Fonts.sans.bold,
-      fontWeight: '700',
-      color: theme.onTint,
     },
   });

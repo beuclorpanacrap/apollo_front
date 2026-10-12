@@ -8,21 +8,25 @@ import { useTheme } from '@/hooks/use-theme';
 type DetailRowProps = {
   icon: ComponentProps<typeof Ionicons>['name'];
   iconColor?: string;
+  /** Defaults to `textTertiary` (patient app). The portal passes `textMuted` (4.5:1+). */
+  labelColor?: string;
   label: string;
+  /** Drops the built-in bottom margin so the parent can space rows with `gap` (no trailing space after the last row). */
+  compact?: boolean;
   children: ReactNode;
   /** Drops the space below, for a row that sits alone in a card. */
   compact?: boolean;
 };
 
-export function DetailRow({ icon, iconColor, label, children, compact }: DetailRowProps) {
+export function DetailRow({ icon, iconColor, labelColor, label, compact, children }: DetailRowProps) {
   const theme = useTheme();
   return (
-    <View style={[styles.row, compact && { marginBottom: 0 }]}>
+    <View style={[styles.row, compact ? styles.rowCompact : null]}>
       <View style={[styles.iconWrap, { backgroundColor: theme.surfaceMuted }]}>
         <Ionicons name={icon} size={16} color={iconColor ?? theme.tintStrong} />
       </View>
       <View style={styles.body}>
-        <Text style={[styles.label, { color: theme.textTertiary }]}>{label}</Text>
+        <Text style={[styles.label, { color: labelColor ?? theme.textTertiary }]}>{label}</Text>
         {typeof children === 'string' ? (
           <Text style={[styles.value, { color: theme.text }]}>{children}</Text>
         ) : (
@@ -35,6 +39,7 @@ export function DetailRow({ icon, iconColor, label, children, compact }: DetailR
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: Spacing.three, marginBottom: Spacing.four, alignItems: 'flex-start' },
+  rowCompact: { marginBottom: 0 },
   iconWrap: {
     width: 32,
     height: 32,
