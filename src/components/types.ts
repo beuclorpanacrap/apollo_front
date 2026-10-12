@@ -51,6 +51,8 @@ export interface NumberField extends FieldBase {
   ranges: ReferenceRange[];
   /** Typo guard, not a clinical limit: anything outside is rejected as "unlikely". */
   plausible?: { min: number; max: number };
+  /** Accepts "<0.5" / ">200" for values beyond what the method can measure (CRP, hormones, markers). */
+  censored?: boolean;
 }
 
 export interface ChoiceOption {
@@ -70,7 +72,16 @@ export interface TextField extends FieldBase {
   multiline?: boolean;
 }
 
-export type TemplateField = NumberField | ChoiceField | TextField;
+/**
+ * One result where the person entering it supplies the test name, unit and reference
+ * themselves, for tests that have no template ("Other test"). The result can be a number
+ * ("5.4", "<2.6") or plain text ("Positive", "1:80").
+ */
+export interface MeasurementField extends FieldBase {
+  type: 'measurement';
+}
+
+export type TemplateField = NumberField | ChoiceField | TextField | MeasurementField;
 
 export interface TemplateSection {
   id: string;
@@ -88,7 +99,10 @@ export interface LabTemplate {
   sections: TemplateSection[];
 }
 
-/** What the form holds while typing: field key → raw text (or the chosen option's value). */
+/**
+ * What the form holds while typing: field key → raw text (or the chosen option's value).
+ * The lab's own printed reference for a number field lives under `printedReferenceKey(key)`.
+ */
 export type DraftValues = Record<string, string>;
 
 export type Flag = 'normal' | 'low' | 'high' | 'critical-low' | 'critical-high' | 'abnormal';
@@ -99,7 +113,12 @@ export type Flag = 'normal' | 'low' | 'high' | 'critical-low' | 'critical-high' 
  */
 export interface ResultEntry {
   key: string;
+  /** Name of the test, set when the template couldn't know it (see MeasurementField). */
+  label?: string;
+  /** For a censored result ("<0.5") this is the bound, 0.5. */
   value: number | string;
+  /** Set when the true value is below ('<') or above ('>') `value`. */
+  qualifier?: '<' | '>';
   unit?: string;
   flag?: Flag;
   /** Reference text as printed on the report, e.g. "130–175". */

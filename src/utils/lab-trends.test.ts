@@ -90,6 +90,43 @@ describe('buildTrendSeries', () => {
   });
 });
 
+describe('a test with no template ("Other test")', () => {
+  const other = (id: string, dateAdded: string, value: number | string, qualifier?: '<' | '>'): LocalLabResult => ({
+    ...base,
+    id,
+    mode: 'freeform',
+    testName: 'Interleukin 4',
+    freeformResult: 'x',
+    dateAdded,
+    panel: {
+      templateCode: 'other',
+      templateVersion: 1,
+      status: 'final',
+      entries: [{ key: 'result', label: 'Interleukin 4', value, ...(qualifier ? { qualifier } : {}), unit: 'pg/mL', reference: '≤ 13.1' }],
+    },
+  });
+
+  it('charts under the typed name and merges with doctor-entered results of that name', () => {
+    const series = buildTrendSeries(
+      [other('a', '2026-01-01', 2.6, '<'), other('b', '2026-02-01', 'Positive')],
+      [{ id: 'r1', testName: 'interleukin 4', numericValue: 15, unit: 'pg/mL', recordedAt: '2026-03-01T09:00:00' }],
+    );
+    expect(series).toHaveLength(1);
+    expect(series[0]).toMatchObject({ key: 'interleukin 4', label: 'Interleukin 4', unit: 'pg/mL', range: { max: 13.1 } });
+    expect(series[0]!.points.map((p) => [p.date, p.value])).toEqual([
+      ['2026-01-01', 2.6],
+      ['2026-03-01', 15],
+    ]);
+  });
+
+  it('is summarised by its value', () => {
+    expect(summarizePanel(other('a', '2026-01-01', 2.6, '<').panel!.entries)).toBe('<2.6 pg/mL');
+    expect(summarizePanel([{ key: 'result', label: 'IL-4', value: 20, unit: 'pg/mL', flag: 'high' }])).toBe(
+      '20 pg/mL · out of range',
+    );
+  });
+});
+
 describe('getLabPanel', () => {
   it('reads results saved as JSON text before panels existed', () => {
     const legacy: LocalLabResult = {

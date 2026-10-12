@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, type ComponentProps } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -6,6 +6,8 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { Badge, IconBubble } from '@/components/ui/badge';
 import { LabResultView } from '@/components/LabResultView';
+import { Masonry, type MasonryItem } from '@/components/LabUI';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DetailRow } from '@/components/ui/detail-row';
 import { TrendCard } from '@/components/vault/trend-card';
@@ -30,7 +32,9 @@ function useTrendsFor(
     if (panelInfo) {
       const labels = new Map(allFields(panelInfo.template).map((f) => [f.key, f.label] as const));
       for (const entry of panelInfo.panel.entries) {
-        if (typeof entry.value === 'number') wanted.add(seriesKey(labels.get(entry.key) ?? entry.key));
+        if (typeof entry.value === 'number') {
+          wanted.add(seriesKey(entry.label ?? labels.get(entry.key) ?? entry.key));
+        }
       }
     } else if (testName && numericValue != null) {
       wanted.add(seriesKey(testName));
@@ -115,6 +119,26 @@ export default function ViewLabResultScreen() {
     );
   }
 
+  // Result, doctor and date each get a card, so they sit in the collage like everything else.
+  const detailCard = (key: string, icon: ComponentProps<typeof DetailRow>['icon'], label: string, text: string): MasonryItem => ({
+    key,
+    weight: 2,
+    node: (
+      <Card>
+        <DetailRow icon={icon} label={label} compact>
+          {text}
+        </DetailRow>
+      </Card>
+    ),
+  });
+  const detailItems: MasonryItem[] = [
+    ...(record.freeformResult && !panelInfo
+      ? [detailCard('result', 'document-text-outline', 'Result', record.freeformResult)]
+      : []),
+    ...(record.doctorName ? [detailCard('doctor', 'person-circle-outline', 'Doctor', record.doctorName)] : []),
+    detailCard('date', 'calendar-outline', 'Date', formatDateLabel(record.date)),
+  ];
+
   const hasStat = record.numericValue != null && !panelInfo;
   const handleDelete = async () => {
     const confirmed = await confirmAsync('Delete this result?', "This can't be undone.");
@@ -157,31 +181,27 @@ export default function ViewLabResultScreen() {
 
         <View style={styles.content}>
           {panelInfo ? (
-            <View style={{ marginBottom: Spacing.three }}>
-              <LabResultView template={panelInfo.template} entries={panelInfo.panel.entries} showTitle={false} />
-            </View>
-          ) : null}
+            <LabResultView
+              template={panelInfo.template}
+              entries={panelInfo.panel.entries}
+              showTitle={false}
+              extra={detailItems}
+            />
+          ) : (
+            <Masonry items={detailItems} />
+          )}
           {trends.length > 0 ? (
             <View style={styles.trends}>
               <Text style={styles.trendsTitle}>Over time</Text>
-              {trends.map((series) => (
-                <TrendCard key={series.key} series={series} />
-              ))}
+              <Masonry
+                items={trends.map((series) => ({
+                  key: series.key,
+                  weight: 5,
+                  node: <TrendCard series={series} />,
+                }))}
+              />
             </View>
           ) : null}
-          {record.freeformResult && !panelInfo ? (
-            <DetailRow icon="document-text-outline" label="Result">
-              {record.freeformResult}
-            </DetailRow>
-          ) : null}
-          {record.doctorName ? (
-            <DetailRow icon="person-circle-outline" label="Doctor">
-              {record.doctorName}
-            </DetailRow>
-          ) : null}
-          <DetailRow icon="calendar-outline" label="Date">
-            {formatDateLabel(record.date)}
-          </DetailRow>
 
           {local ? (
             <View style={styles.actionsRow}>
@@ -215,17 +235,18 @@ function createStyles(theme: AppTheme) {
     statValue: { fontSize: 48, fontFamily: Fonts.sans.extraBold, fontWeight: '800', color: theme.text, lineHeight: 52 },
     statUnit: { fontSize: 18, fontFamily: Fonts.sans.semiBold, fontWeight: '600', color: theme.textSecondary, marginBottom: 8 },
     statRange: { fontSize: 12, fontFamily: Fonts.sans.medium, fontWeight: '500', color: theme.textTertiary, marginTop: -6 },
-    content: { padding: 24, maxWidth: 600, alignSelf: 'center', width: '100%' },
-    trends: { marginBottom: Spacing.three, gap: Spacing.one },
+    content: { padding: 24, width: '100%', gap: Spacing.four },
+    trends: { gap: Spacing.two },
     trendsTitle: { fontSize: 15, fontFamily: Fonts.sans.bold, fontWeight: '700', color: theme.text },
-    actionsRow: { flexDirection: 'row', gap: 10, marginTop: Spacing.four },
+    actionsRow: { flexDirection: 'row', gap: 10, alignSelf: 'flex-start', width: '100%', maxWidth: 360 },
     readOnlyNote: {
       flexDirection: 'row',
       gap: 10,
       backgroundColor: theme.pillGreenBg,
       borderRadius: 12,
       padding: 14,
-      marginTop: Spacing.two,
+      alignSelf: 'flex-start',
+      maxWidth: 520,
     },
     readOnlyNoteText: { flex: 1, fontSize: 12, fontFamily: Fonts.sans.regular, color: theme.pillGreenText, lineHeight: 17 },
     notFoundBody: { padding: 32, alignItems: 'center', gap: 10 },

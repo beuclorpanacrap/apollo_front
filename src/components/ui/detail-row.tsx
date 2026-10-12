@@ -10,12 +10,14 @@ type DetailRowProps = {
   iconColor?: string;
   label: string;
   children: ReactNode;
+  /** Drops the space below, for a row that sits alone in a card. */
+  compact?: boolean;
 };
 
-export function DetailRow({ icon, iconColor, label, children }: DetailRowProps) {
+export function DetailRow({ icon, iconColor, label, children, compact }: DetailRowProps) {
   const theme = useTheme();
   return (
-    <View style={styles.row}>
+    <View style={[styles.row, compact && { marginBottom: 0 }]}>
       <View style={[styles.iconWrap, { backgroundColor: theme.surfaceMuted }]}>
         <Ionicons name={icon} size={16} color={iconColor ?? theme.tintStrong} />
       </View>

@@ -18,7 +18,8 @@ export default function DoctorLabResultScreen() {
   const vault = activeVault;
   const patientId = activeVault.patient.id;
 
-  // The backend stores one numeric value per record, so each numeric entry becomes its own test result.
+  // The backend stores one exact numeric value per record, so each numeric entry becomes its own test result.
+  // Choice and text entries, and censored values ("<0.5", which has no exact number), are not sent.
   async function save(payload: LabResultPayload) {
     const template = getTemplate(payload.templateCode);
     const labels = new Map((template ? allFields(template) : []).map((f) => [f.key, f.label] as const));
@@ -28,12 +29,12 @@ export default function DoctorLabResultScreen() {
     const now = new Date();
     const recordedAt = new Date(y!, m! - 1, d!, now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds()).toISOString();
     for (const entry of payload.entries) {
-      if (typeof entry.value !== 'number') continue;
+      if (typeof entry.value !== 'number' || entry.qualifier) continue;
       const result = await apiClient<any>('/api/v1/doctor/test-results', {
         method: 'POST',
         body: {
           patientId,
-          testName: labels.get(entry.key) ?? entry.key,
+          testName: entry.label ?? labels.get(entry.key) ?? entry.key,
           numericValue: entry.value,
           unit: entry.unit ?? '',
           recordedAt,
