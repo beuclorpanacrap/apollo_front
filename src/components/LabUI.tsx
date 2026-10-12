@@ -3,19 +3,19 @@ import {
   Platform,
   Pressable,
   Text,
-  useColorScheme,
   View,
   type StyleProp,
   type TextStyle,
   type ViewStyle,
 } from 'react-native';
 
-import { Colors, Fonts, Spacing, type AppTheme } from '../constants/theme';
+import { Fonts, Spacing, type AppTheme } from '../constants/theme';
+import { useTheme } from '../hooks/use-theme';
 import type { Flag } from './types';
 
-/** Palette for the current light/dark mode. Swap in your own useTheme() if you already have one. */
+/** Palette for the app's current theme (the Light / Dark / System choice in Settings). */
 export function useLabTheme(): AppTheme {
-  return Colors[useColorScheme() === 'dark' ? 'dark' : 'light'];
+  return useTheme();
 }
 
 type Weight = keyof typeof Fonts.sans;
