@@ -14,7 +14,8 @@ export default function AddLabResultScreen() {
     const template = getTemplate(payload.templateCode);
     await addLabResult({
       mode: 'freeform',
-      testName: template?.name ?? payload.templateCode,
+      // "Other test" results are listed under the name that was typed.
+      testName: payload.entries.find((e) => e.label)?.label ?? template?.name ?? payload.templateCode,
       freeformResult: summarizePanel(payload.entries),
       panel: {
         templateCode: payload.templateCode,

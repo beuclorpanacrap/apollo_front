@@ -22,6 +22,19 @@ const cbcBatch = [
 ];
 
 describe('groupRemoteLabs', () => {
+  it('recognises a thyroid panel and a coagulation panel', () => {
+    const { groups } = groupRemoteLabs(
+      [
+        rec('t1', 'TSH', 2.1, 'mIU/L'),
+        rec('t2', 'Free T4', 15, 'pmol/L'),
+        rec('c1', 'INR', 1.1, '', { recordedAt: '2026-03-02T09:30:00.000Z' }),
+        rec('c2', 'Fibrinogen', 3, 'g/L', { recordedAt: '2026-03-02T09:30:00.000Z' }),
+      ],
+      woman,
+    );
+    expect(groups.map((g) => g.template.code).sort()).toEqual(['coagulation', 'thyroid']);
+  });
+
   it('puts the values of one submission back together as one template result', () => {
     const { groups, singles } = groupRemoteLabs(cbcBatch, woman);
 

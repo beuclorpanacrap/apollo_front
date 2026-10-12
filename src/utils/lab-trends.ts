@@ -5,7 +5,7 @@
  * Pure TypeScript with relative imports only, so it runs under Jest as-is.
  */
 
-import { allFields, flagFor } from '../components/evaluate';
+import { allFields, flagFor, parseReference } from '../components/evaluate';
 import { getTemplate, TEMPLATES } from '../components/templates';
 import type { Flag, LabTemplate, ReferenceRange, ResultEntry } from '../components/types';
 import type { LocalLabPanel, LocalLabResult } from '../types/local-records';
@@ -39,20 +39,7 @@ export interface RemoteLabResult {
   recordedAt?: string;
 }
 
-const NUMBER = '(-?\\d+(?:[.,]\\d+)?)';
-const toNumber = (s: string) => Number(s.replace(',', '.'));
-
-/** "130–175", "70-100", "≤ 5.2" and "≥ 1.0" → a range. Anything else → undefined. */
-export function parseReference(text?: string): Pick<ReferenceRange, 'min' | 'max'> | undefined {
-  if (!text) return undefined;
-  const between = new RegExp(`^\\s*${NUMBER}\\s*[–-]\\s*${NUMBER}\\s*$`).exec(text);
-  if (between) return { min: toNumber(between[1]!), max: toNumber(between[2]!) };
-  const atMost = new RegExp(`^\\s*(?:≤|<=?)\\s*${NUMBER}\\s*$`).exec(text);
-  if (atMost) return { max: toNumber(atMost[1]!) };
-  const atLeast = new RegExp(`^\\s*(?:≥|>=?)\\s*${NUMBER}\\s*$`).exec(text);
-  if (atLeast) return { min: toNumber(atLeast[1]!) };
-  return undefined;
-}
+export { parseReference };
 
 /** yyyy-mm-dd of a stored date (plain date or ISO datetime), in the viewer's time zone. */
 export function toDateKey(value?: string): string {
@@ -88,9 +75,14 @@ export function getLabPanel(lab: LocalLabResult): { template: LabTemplate; panel
   }
 }
 
-/** "4 values · 1 out of range", for list cards. */
+/** "4 values · 1 out of range", for list cards. A single named test reads "<2.6 pg/mL". */
 export function summarizePanel(entries: ResultEntry[]): string {
   const outOfRange = entries.filter((e) => e.flag !== undefined && e.flag !== 'normal').length;
+  const [only] = entries;
+  if (entries.length === 1 && only?.label) {
+    const value = `${only.qualifier ?? ''}${only.value}${only.unit ? ` ${only.unit}` : ''}`;
+    return outOfRange > 0 ? `${value} · out of range` : value;
+  }
   const count = `${entries.length} ${entries.length === 1 ? 'value' : 'values'}`;
   return outOfRange > 0 ? `${count} · ${outOfRange} out of range` : count;
 }
@@ -132,7 +124,7 @@ export function buildTrendSeries(localLabs: LocalLabResult[], remoteLabs: Remote
       for (const entry of found.panel.entries) {
         if (typeof entry.value !== 'number') continue;
         add(
-          labels.get(entry.key) ?? entry.key,
+          entry.label ?? labels.get(entry.key) ?? entry.key,
           { date, value: entry.value, flag: entry.flag, sourceId: lab.id },
           entry.unit,
           parseReference(entry.reference),

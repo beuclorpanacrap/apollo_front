@@ -14,6 +14,8 @@ type DetailRowProps = {
   /** Drops the built-in bottom margin so the parent can space rows with `gap` (no trailing space after the last row). */
   compact?: boolean;
   children: ReactNode;
+  /** Drops the space below, for a row that sits alone in a card. */
+  compact?: boolean;
 };
 
 export function DetailRow({ icon, iconColor, labelColor, label, compact, children }: DetailRowProps) {

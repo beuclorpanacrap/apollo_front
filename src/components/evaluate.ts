@@ -15,6 +15,43 @@ export function parseDecimal(input: string): number | undefined {
   return /^-?(\d+(\.\d*)?|\.\d+)$/.test(s) ? Number(s) : undefined;
 }
 
+/** Where the form keeps the reference range the lab printed next to a value. */
+export const printedReferenceKey = (fieldKey: string) => `${fieldKey}:reference`;
+
+/** Where the form keeps the test name and unit typed for a 'measurement' field. */
+export const measurementNameKey = (fieldKey: string) => `${fieldKey}:name`;
+export const measurementUnitKey = (fieldKey: string) => `${fieldKey}:unit`;
+
+/** "5.4" → {value: 5.4}; "<0.5" → {value: 0.5, qualifier: '<'} (only when the field allows it). */
+export function parseResult(
+  input: string,
+  censored = false,
+): { value: number; qualifier?: '<' | '>' } | undefined {
+  const text = input.trim();
+  const bound = censored ? /^([<>])\s*(.+)$/.exec(text) : null;
+  if (bound) {
+    const value = parseDecimal(bound[2]!);
+    return value === undefined ? undefined : { value, qualifier: bound[1] as '<' | '>' };
+  }
+  const value = parseDecimal(text);
+  return value === undefined ? undefined : { value };
+}
+
+const REF_NUMBER = '(-?\\d+(?:[.,]\\d+)?)';
+const refNumber = (s: string) => Number(s.replace(',', '.'));
+
+/** "130–175", "70-100", "≤ 5.2" and "≥ 1.0" → a range. Anything else → undefined. */
+export function parseReference(text?: string): Pick<ReferenceRange, 'min' | 'max'> | undefined {
+  if (!text) return undefined;
+  const between = new RegExp(`^\\s*${REF_NUMBER}\\s*[–-]\\s*${REF_NUMBER}\\s*$`).exec(text);
+  if (between) return { min: refNumber(between[1]!), max: refNumber(between[2]!) };
+  const atMost = new RegExp(`^\\s*(?:≤|<=?)\\s*${REF_NUMBER}\\s*$`).exec(text);
+  if (atMost) return { max: refNumber(atMost[1]!) };
+  const atLeast = new RegExp(`^\\s*(?:≥|>=?)\\s*${REF_NUMBER}\\s*$`).exec(text);
+  if (atLeast) return { min: refNumber(atLeast[1]!) };
+  return undefined;
+}
+
 /** 5 → "5.0" when decimals is 1. Only pads, never rounds. */
 export function padDecimals(n: number, decimals = 0): string {
   const s = String(n);
@@ -45,8 +82,26 @@ export function formatRange(r: ReferenceRange | undefined, decimals = 0): string
   return '';
 }
 
-export function flagFor(value: number, r: ReferenceRange | undefined): Flag | undefined {
+/**
+ * `qualifier` means the true value is below ('<') or above ('>') `value`. A flag is only
+ * given when every value that fits would get the same one; otherwise there is none.
+ */
+export function flagFor(
+  value: number,
+  r: ReferenceRange | undefined,
+  qualifier?: '<' | '>',
+): Flag | undefined {
   if (!r) return undefined;
+  if (qualifier === '<') {
+    if (r.criticalLow !== undefined && value <= r.criticalLow) return 'critical-low';
+    if (r.min !== undefined) return value <= r.min ? 'low' : undefined;
+    return r.max !== undefined && value > r.max ? undefined : 'normal';
+  }
+  if (qualifier === '>') {
+    if (r.criticalHigh !== undefined && value >= r.criticalHigh) return 'critical-high';
+    if (r.max !== undefined) return value >= r.max ? 'high' : undefined;
+    return r.min !== undefined && value < r.min ? undefined : 'normal';
+  }
   if (r.criticalLow !== undefined && value < r.criticalLow) return 'critical-low';
   if (r.criticalHigh !== undefined && value > r.criticalHigh) return 'critical-high';
   if (r.min !== undefined && value < r.min) return 'low';
@@ -62,6 +117,11 @@ export const allFields = (template: LabTemplate): TemplateField[] =>
 export interface EvalOptions {
   /** true = an empty required field is an error. Use it when finalizing, not for drafts. */
   requireComplete?: boolean;
+  /** The reference range as the lab printed it, e.g. "3.5–12.5". Wins over the template's range. */
+  printedReference?: string;
+  /** Only for 'measurement' fields: the test name and unit the person typed. */
+  name?: string;
+  unit?: string;
 }
 
 export interface FieldEvaluation {
@@ -76,27 +136,44 @@ export function evaluateField(
   field: TemplateField,
   raw: string | undefined,
   patient: PatientContext,
-  { requireComplete = false }: EvalOptions = {},
+  { requireComplete = false, printedReference, name, unit }: EvalOptions = {},
 ): FieldEvaluation {
   const text = (raw ?? '').trim();
   if (text === '') return field.required && requireComplete ? { error: 'Required' } : {};
 
   switch (field.type) {
     case 'number': {
-      const value = parseDecimal(text);
-      if (value === undefined) return { error: 'Enter a number, e.g. 5.4' };
+      const parsed = parseResult(text, field.censored);
+      if (parsed === undefined) {
+        return { error: field.censored ? 'Enter a number, e.g. 5.4 or <0.5' : 'Enter a number, e.g. 5.4' };
+      }
+      const { value, qualifier } = parsed;
 
       const { plausible } = field;
       if (plausible && (value < plausible.min || value > plausible.max)) {
         return { error: `Unlikely value. Expected ${plausible.min}–${plausible.max} ${field.unit}`.trim() };
       }
 
-      const range = pickRange(field, patient);
-      const flag = flagFor(value, range);
+      let range: ReferenceRange | undefined;
+      const printed = (printedReference ?? '').trim();
+      if (printed) {
+        range = parseReference(printed);
+        if (!range) return { error: 'Reference: use a form like 3.5–12.5, ≤ 5 or ≥ 1' };
+      } else {
+        range = pickRange(field, patient);
+      }
+      const flag = flagFor(value, range, qualifier);
       const reference = formatRange(range, field.decimals) || undefined;
       return {
         flag,
-        entry: { key: field.key, value, unit: field.unit || undefined, flag, reference },
+        entry: {
+          key: field.key,
+          value,
+          ...(qualifier ? { qualifier } : {}),
+          unit: field.unit || undefined,
+          flag,
+          reference,
+        },
       };
     }
     case 'choice': {
@@ -107,6 +184,35 @@ export function evaluateField(
     }
     case 'text':
       return { entry: { key: field.key, value: text } };
+    case 'measurement': {
+      const label = (name ?? '').trim();
+      if (!label) return { error: 'Enter the test name' };
+
+      // Anything that isn't a number ("Positive", "1:80") is kept as written, without a flag.
+      const parsed = parseResult(text, true);
+      if (parsed === undefined) return { entry: { key: field.key, label, value: text } };
+
+      let range: ReferenceRange | undefined;
+      const printed = (printedReference ?? '').trim();
+      if (printed) {
+        range = parseReference(printed);
+        if (!range) return { error: 'Reference: use a form like 3.5–12.5, ≤ 5 or ≥ 1' };
+      }
+      const flag = flagFor(parsed.value, range, parsed.qualifier);
+      const typedUnit = (unit ?? '').trim();
+      return {
+        flag,
+        entry: {
+          key: field.key,
+          label,
+          value: parsed.value,
+          ...(parsed.qualifier ? { qualifier: parsed.qualifier } : {}),
+          unit: typedUnit || undefined,
+          flag,
+          reference: formatRange(range) || undefined,
+        },
+      };
+    }
   }
 }
 
@@ -130,7 +236,12 @@ export function evaluateTemplate(
   const errors: Record<string, string> = {};
 
   for (const field of allFields(template)) {
-    const result = evaluateField(field, values[field.key], patient, options);
+    const result = evaluateField(field, values[field.key], patient, {
+      ...options,
+      printedReference: values[printedReferenceKey(field.key)],
+      name: values[measurementNameKey(field.key)],
+      unit: values[measurementUnitKey(field.key)],
+    });
     byKey[field.key] = result;
     if (result.entry) entries.push(result.entry);
     if (result.error) errors[field.key] = result.error;
@@ -144,7 +255,10 @@ export function formatValue(field: TemplateField, entry: ResultEntry): string {
     return field.options.find((o) => o.value === entry.value)?.label ?? String(entry.value);
   }
   if (field.type === 'number' && typeof entry.value === 'number') {
-    return padDecimals(entry.value, field.decimals);
+    return `${entry.qualifier ?? ''}${padDecimals(entry.value, field.decimals)}`;
+  }
+  if (field.type === 'measurement' && typeof entry.value === 'number') {
+    return `${entry.qualifier ?? ''}${entry.value}`;
   }
   return String(entry.value);
 }

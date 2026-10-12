@@ -153,4 +153,69 @@ describe('NewLabResultScreen', () => {
     await fireEvent.press(protein.getByRole('radio', { name: '++' }));
     expect(screen.getByText('Abnormal')).toBeTruthy();
   });
+
+  it('accepts a value below the detection limit and keeps the qualifier in the payload', async () => {
+    await render(<NewLabResultScreen />);
+    await fireEvent.press(screen.getByRole('radio', { name: 'Inflammation markers' }));
+
+    await type('CRP', '<0,6');
+    expect(screen.getByText('Normal')).toBeTruthy();
+
+    await fireEvent.press(screen.getByText('Save draft'));
+    const payload = JSON.parse(String(log.mock.calls[0]?.[0]));
+    expect(payload.entries[0]).toEqual({
+      key: 'crp',
+      value: 0.6,
+      qualifier: '<',
+      unit: 'mg/L',
+      flag: 'normal',
+      reference: '≤ 5.0',
+    });
+  });
+
+  it('asks for the lab\'s printed range only where the template has none for this patient', async () => {
+    await render(<NewLabResultScreen />); // a woman: FSH depends on the cycle phase
+    await fireEvent.press(screen.getByRole('radio', { name: 'Reproductive hormones' }));
+
+    await type('FSH', '40');
+    expect(screen.queryByText('↑ High')).toBeNull();
+
+    await type('FSH reference', '3,5–12,5');
+    expect(screen.getByText('↑ High')).toBeTruthy();
+
+    await fireEvent.press(screen.getByText('Save draft'));
+    const payload = JSON.parse(String(log.mock.calls[0]?.[0]));
+    expect(payload.entries).toEqual([
+      { key: 'fsh', value: 40, unit: 'IU/L', flag: 'high', reference: '3.5–12.5' },
+    ]);
+  });
+
+  it('lets you enter a test that has no template', async () => {
+    await render(<NewLabResultScreen />);
+    await fireEvent.press(screen.getByRole('radio', { name: 'Other test' }));
+
+    await type('Result', '<2,6');
+    await fireEvent.press(screen.getByText('Finalize result'));
+    expect(screen.getByText('Enter the test name')).toBeTruthy();
+    expect(log).not.toHaveBeenCalled();
+
+    await type('Test name', 'Interleukin 4');
+    await type('Unit', 'pg/mL');
+    await type('Reference range', '<13,1');
+    expect(screen.getByText('Normal')).toBeTruthy();
+
+    await fireEvent.press(screen.getByText('Finalize result'));
+    const payload = JSON.parse(String(log.mock.calls[0]?.[0]));
+    expect(payload).toMatchObject({ templateCode: 'other', status: 'final' });
+    expect(payload.entries).toEqual([
+      { key: 'result', label: 'Interleukin 4', value: 2.6, qualifier: '<', unit: 'pg/mL', flag: 'normal', reference: '≤ 13.1' },
+    ]);
+  });
+
+  it('does not ask for a printed range when the template has one', async () => {
+    await render(<NewLabResultScreen patient={{ sex: 'male', ageYears: 34 }} />);
+    await fireEvent.press(screen.getByRole('radio', { name: 'Reproductive hormones' }));
+    expect(screen.queryByLabelText('FSH reference')).toBeNull();
+    expect(screen.getByLabelText('DHEA-S reference')).toBeTruthy(); // no range for anyone
+  });
 });

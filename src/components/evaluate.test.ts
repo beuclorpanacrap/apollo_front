@@ -1,8 +1,31 @@
 import { describe, expect, it } from '@jest/globals';
 
-import { evaluateField, evaluateTemplate, formatValue, parseDecimal, pickRange } from './evaluate';
+import {
+  evaluateField,
+  evaluateTemplate,
+  formatValue,
+  measurementNameKey,
+  measurementUnitKey,
+  parseDecimal,
+  parseReference,
+  parseResult,
+  pickRange,
+  printedReferenceKey,
+} from './evaluate';
 import type { EvalOptions } from './evaluate';
-import { biochemistry, cbc, getTemplate, TEMPLATES, urinalysis } from './templates';
+import {
+  biochemistry,
+  cardiac,
+  cbc,
+  getTemplate,
+  inflammation,
+  otherTest,
+  reproductive,
+  TEMPLATES,
+  thyroid,
+  tumorMarkers,
+  urinalysis,
+} from './templates';
 import type { LabTemplate, NumberField, PatientContext } from './types';
 
 const woman: PatientContext = { sex: 'female', ageYears: 34 };
@@ -196,5 +219,202 @@ describe('templates', () => {
     expect(getTemplate('cbc', 1)?.version).toBe(1);
     expect(getTemplate('cbc', 99)).toBeUndefined();
     expect(getTemplate('nope')).toBeUndefined();
+  });
+});
+
+describe('censored values ("<0.5", ">200")', () => {
+  it('parses a bound only for fields that allow it', () => {
+    expect(parseResult('<0,5', true)).toEqual({ value: 0.5, qualifier: '<' });
+    expect(parseResult('> 200', true)).toEqual({ value: 200, qualifier: '>' });
+    expect(parseResult('5.4', true)).toEqual({ value: 5.4 });
+    expect(parseResult('<0.5', false)).toBeUndefined();
+    expect(parseResult('<', true)).toBeUndefined();
+  });
+
+  it('rejects a bound on a field that does not allow it', () => {
+    expect(check(cbc, 'hgb', '<100').error).toMatch(/number/i);
+  });
+
+  it('keeps the bound and the qualifier in the entry', () => {
+    const { entry } = check(inflammation, 'crp', '<0,6');
+    expect(entry).toMatchObject({ key: 'crp', value: 0.6, qualifier: '<', unit: 'mg/L', flag: 'normal', reference: '≤ 5.0' });
+    expect(check(inflammation, 'crp', '4.2').entry).not.toHaveProperty('qualifier');
+  });
+
+  it('only flags when every value that fits would get that flag', () => {
+    expect(check(inflammation, 'crp', '<5').flag).toBe('normal'); // below 5, limit is ≤ 5
+    expect(check(inflammation, 'crp', '<20').flag).toBeUndefined(); // could be on either side of 5
+    expect(check(inflammation, 'crp', '>5').flag).toBe('high');
+    expect(check(inflammation, 'crp', '>3').flag).toBeUndefined();
+    expect(check(reproductive, 'estradiol', '<20', man).flag).toBe('low'); // below 20, floor is 40
+    expect(check(reproductive, 'estradiol', '<100', man).flag).toBeUndefined();
+  });
+
+  it('still rejects an implausible bound', () => {
+    expect(check(inflammation, 'crp', '<5000').error).toMatch(/unlikely/i);
+  });
+
+  it('shows the qualifier in the report', () => {
+    const field = inflammation.sections.flatMap((s) => s.fields).find((f) => f.key === 'crp');
+    if (!field) throw new Error('crp missing');
+    expect(formatValue(field, { key: 'crp', value: 5, qualifier: '<' })).toBe('<5.0');
+  });
+});
+
+describe('reference printed by the lab', () => {
+  it('parses what labs print', () => {
+    expect(parseReference('3,3-5,6')).toEqual({ min: 3.3, max: 5.6 });
+    expect(parseReference('<13.1')).toEqual({ max: 13.1 });
+    expect(parseReference('≥ 1')).toEqual({ min: 1 });
+    expect(parseReference('negative')).toBeUndefined();
+  });
+
+  it('flags against the printed range when the template has none', () => {
+    const result = check(cardiac, 'troponin', '20', woman);
+    expect(result.flag).toBeUndefined();
+
+    const field = cardiac.sections.flatMap((s) => s.fields).find((f) => f.key === 'troponin');
+    if (!field) throw new Error('troponin missing');
+    const withPrinted = evaluateField(field, '20', woman, { printedReference: '0–14' });
+    expect(withPrinted.flag).toBe('high');
+    expect(withPrinted.entry?.reference).toBe('0–14');
+  });
+
+  it('reads it from the form values by key', () => {
+    const draft = evaluateTemplate(cardiac, { troponin: '20', [printedReferenceKey('troponin')]: '≤ 14' }, woman);
+    expect(draft.byKey.troponin?.flag).toBe('high');
+    expect(draft.entries.map((e) => e.key)).toEqual(['troponin']); // the reference is not an entry of its own
+  });
+
+  it('rejects text it cannot read', () => {
+    const draft = evaluateTemplate(cardiac, { troponin: '20', [printedReferenceKey('troponin')]: 'normal' }, woman);
+    expect(draft.errors.troponin).toMatch(/reference/i);
+  });
+
+  it('has no template range for women on cycle-dependent hormones, but does for men', () => {
+    expect(check(reproductive, 'fsh', '8', woman).flag).toBeUndefined();
+    expect(check(reproductive, 'fsh', '8', man).flag).toBe('normal');
+    expect(check(reproductive, 'fsh', '20', man).flag).toBe('high');
+  });
+});
+
+describe('age-banded ranges', () => {
+  it('picks the PSA band for the age and gives none to women', () => {
+    const psa = (ageYears: number, sex: PatientContext['sex'] = 'male') =>
+      check(tumorMarkers, 'psa', '3.8', { sex, ageYears });
+    expect(psa(45).flag).toBe('high'); // ≤ 2.5
+    expect(psa(55).flag).toBe('high'); // ≤ 3.5
+    expect(psa(65).flag).toBe('normal'); // ≤ 4.5
+    expect(psa(75).flag).toBe('normal'); // ≤ 6.5
+    expect(psa(55, 'female').flag).toBeUndefined();
+  });
+});
+
+describe('values from real lab sheets', () => {
+  // Values copied from a CBC and a serum biochemistry sheet for a 43-year-old woman.
+  const patient: PatientContext = { sex: 'female', ageYears: 43 };
+
+  it('accepts the CBC indices', () => {
+    for (const [key, raw] of [
+      ['rdw_cv', '12,6'],
+      ['rdw_sd', '40,2'],
+      ['neut_abs', '2,67'],
+      ['lymph_abs', '2,27'],
+      ['mono_abs', '0,41'],
+      ['eos_abs', '0,06'],
+      ['baso_abs', '0,02'],
+      ['mpv', '9,7'],
+      ['pdw', '10,2'],
+      ['pct', '0,3'],
+      ['plcr', '21,3'],
+      ['esr', '19'],
+    ] as const) {
+      const result = check(cbc, key, raw, patient);
+      expect([key, result.error]).toEqual([key, undefined]);
+      expect([key, result.flag]).toEqual([key, 'normal']);
+    }
+  });
+
+  it('accepts the biochemistry values the old template lacked', () => {
+    expect(check(biochemistry, 'alp', '114', patient).flag).toBe('normal');
+    expect(check(biochemistry, 'amylase', '45', patient).flag).toBe('normal');
+    expect(check(biochemistry, 'iron', '26,3', patient).flag).toBe('normal');
+    expect(check(biochemistry, 'protein', '66,7', patient).flag).toBe('normal');
+    expect(check(biochemistry, 'uric_acid', '484', patient).flag).toBe('high'); // the sheet flags it too
+  });
+});
+
+describe('template labels', () => {
+  it('are not shared between templates by accident', () => {
+    // Shared on purpose: the same measurement from two panels should land on one trend graph.
+    const intentional = new Set(['glucose (fasting)', 'iron']);
+    const seen = new Map<string, string>();
+    const clashes: string[] = [];
+    for (const template of TEMPLATES) {
+      for (const field of template.sections.flatMap((s) => s.fields)) {
+        if (field.type !== 'number') continue;
+        const label = field.label.trim().toLowerCase();
+        const other = seen.get(label);
+        if (other && other !== template.code && !intentional.has(label)) clashes.push(`${label}: ${other} / ${template.code}`);
+        seen.set(label, template.code);
+      }
+    }
+    expect(clashes).toEqual([]);
+  });
+
+  it('lets a thyroid panel be entered with antibodies below the limit', () => {
+    const draft = evaluateTemplate(thyroid, { tsh: '2,1', ft4: '15', anti_tpo: '<10' }, woman);
+    expect(draft.errors).toEqual({});
+    expect(draft.entries.map((e) => e.key)).toEqual(['tsh', 'ft4', 'anti_tpo']);
+  });
+});
+
+describe('other test (measurement field)', () => {
+  const field = otherTest.sections.flatMap((s) => s.fields).find((f) => f.key === 'result');
+  if (!field) throw new Error('result missing');
+  const run = (value: string, extra: Record<string, string> = {}) =>
+    evaluateTemplate(
+      otherTest,
+      { result: value, [measurementNameKey('result')]: 'Interleukin 4', ...extra },
+      woman,
+      { requireComplete: true },
+    );
+
+  it('saves a number under the name that was typed', () => {
+    const draft = run('<2,6', {
+      [measurementUnitKey('result')]: 'pg/mL',
+      [printedReferenceKey('result')]: '<13.1',
+    });
+    expect(draft.errors).toEqual({});
+    expect(draft.entries).toEqual([
+      { key: 'result', label: 'Interleukin 4', value: 2.6, qualifier: '<', unit: 'pg/mL', flag: 'normal', reference: '≤ 13.1' },
+    ]);
+  });
+
+  it('flags a number against the printed range', () => {
+    const draft = run('20', { [printedReferenceKey('result')]: '0–13,1' });
+    expect(draft.byKey.result?.flag).toBe('high');
+  });
+
+  it('keeps a result that is not a number as written, without a flag', () => {
+    const draft = run('1:80', { [printedReferenceKey('result')]: '<13.1' });
+    expect(draft.errors).toEqual({});
+    expect(draft.entries).toEqual([{ key: 'result', label: 'Interleukin 4', value: '1:80' }]);
+  });
+
+  it('needs a name for the result and a result for the name', () => {
+    const noName = evaluateTemplate(otherTest, { result: '5' }, woman);
+    expect(noName.errors.result).toMatch(/name/i);
+
+    const noResult = evaluateTemplate(otherTest, { [measurementNameKey('result')]: 'IL-4' }, woman, {
+      requireComplete: true,
+    });
+    expect(noResult.errors.result).toBe('Required');
+    expect(evaluateTemplate(otherTest, { [measurementNameKey('result')]: 'IL-4' }, woman).errors).toEqual({});
+  });
+
+  it('shows the qualifier in the report', () => {
+    expect(formatValue(field, { key: 'result', label: 'IL-4', value: 2.6, qualifier: '<' })).toBe('<2.6');
+    expect(formatValue(field, { key: 'result', label: 'IL-4', value: 'Positive' })).toBe('Positive');
   });
 });

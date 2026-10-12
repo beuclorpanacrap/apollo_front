@@ -1,15 +1,24 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Text, TextInput, View, type TextInputProps } from 'react-native';
 
 import { Spacing } from '../constants/theme';
-import { formatRange, pickRange, type TemplateEvaluation } from './evaluate';
+import {
+  formatRange,
+  measurementNameKey,
+  measurementUnitKey,
+  pickRange,
+  printedReferenceKey,
+  type TemplateEvaluation,
+} from './evaluate';
 import type {
   ChoiceField,
   DraftValues,
   Flag,
   LabTemplate,
+  MeasurementField,
   NumberField,
   PatientContext,
+  TemplateField,
   TextField,
 } from './types';
 import { Chip, FlagPill, font, SectionCard, useLabTheme } from './LabUI';
@@ -21,14 +30,17 @@ interface Props {
   onChange: (values: DraftValues) => void;
   /** Output of evaluateTemplate(). The parent computes it so it can reuse it when saving. */
   evaluation: TemplateEvaluation;
+  /** Cards shown ahead of the sections, in the same stack (the date). */
+  leading?: ReactNode;
 }
 
 /** Renders every section and field of the template. It knows nothing about a specific test. */
-export function LabResultForm({ template, patient, values, onChange, evaluation }: Props) {
+export function LabResultForm({ template, patient, values, onChange, evaluation, leading }: Props) {
   const set = (key: string, value: string) => onChange({ ...values, [key]: value });
 
   return (
-    <View style={{ gap: Spacing.three }}>
+    <View testID="lab-form" style={{ gap: 19 }}>
+      {leading}
       {template.sections.map((section) => (
         <SectionCard key={section.id} title={section.title}>
           {section.fields.map((field) => {
@@ -41,11 +53,34 @@ export function LabResultForm({ template, patient, values, onChange, evaluation 
             };
             switch (field.type) {
               case 'number':
-                return <NumberRow key={field.key} field={field} patient={patient} {...common} />;
+                return (
+                  <NumberRow
+                    key={field.key}
+                    field={field}
+                    patient={patient}
+                    printedReference={values[printedReferenceKey(field.key)] ?? ''}
+                    onPrintedReferenceChange={(v) => set(printedReferenceKey(field.key), v)}
+                    {...common}
+                  />
+                );
               case 'choice':
                 return <ChoiceRow key={field.key} field={field} {...common} />;
               case 'text':
                 return <TextRow key={field.key} field={field} {...common} />;
+              case 'measurement':
+                return (
+                  <MeasurementRow
+                    key={field.key}
+                    field={field}
+                    name={values[measurementNameKey(field.key)] ?? ''}
+                    onNameChange={(v) => set(measurementNameKey(field.key), v)}
+                    unit={values[measurementUnitKey(field.key)] ?? ''}
+                    onUnitChange={(v) => set(measurementUnitKey(field.key), v)}
+                    reference={values[printedReferenceKey(field.key)] ?? ''}
+                    onReferenceChange={(v) => set(printedReferenceKey(field.key), v)}
+                    {...common}
+                  />
+                );
             }
           })}
         </SectionCard>
@@ -71,30 +106,47 @@ function NumberRow({
   onChange,
   flag,
   error,
-}: RowProps<NumberField> & { patient: PatientContext }) {
+  printedReference,
+  onPrintedReferenceChange,
+}: RowProps<NumberField> & {
+  patient: PatientContext;
+  printedReference: string;
+  onPrintedReferenceChange: (value: string) => void;
+}) {
   const c = useLabTheme();
-  const reference = formatRange(pickRange(field, patient), field.decimals);
+  const range = pickRange(field, patient);
+  const reference = formatRange(range, field.decimals);
 
   return (
-    <View style={{ gap: Spacing.two }}>
+    <View style={{ gap: 10 }}>
       <RowHeader label={field.label} required={field.required} flag={flag} />
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.two }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
         <LabInput
           style={{ flex: 1 }}
           value={value}
           onChangeText={onChange}
-          keyboardType="decimal-pad"
-          placeholder="0"
+          // The decimal pad has no "<" key.
+          keyboardType={field.censored ? 'default' : 'decimal-pad'}
+          placeholder={field.censored ? '0 or <0.5' : '0'}
           hasError={!!error}
           accessibilityLabel={field.label}
         />
-        <Text style={[font('medium'), { color: c.textSecondary, fontSize: 15, minWidth: 64 }]}>
+        <Text style={[font('medium'), { color: c.textSecondary, fontSize: 18, minWidth: 77 }]}>
           {field.unit}
         </Text>
       </View>
-      <Text style={[font('regular'), { color: error ? c.danger : c.textSecondary, fontSize: 12 }]}>
+      <Text style={[font('regular'), { color: error ? c.danger : c.textSecondary, fontSize: 14 }]}>
         {error ?? (reference ? `Reference: ${reference} ${field.unit}`.trim() : ' ')}
       </Text>
+      {range ? null : (
+        // No standard range applies to this patient (or the lab's analyzer sets it): take the printed one.
+        <LabInput
+          value={printedReference}
+          onChangeText={onPrintedReferenceChange}
+          placeholder="Lab's reference as printed, e.g. 3.5–12.5"
+          accessibilityLabel={`${field.label} reference`}
+        />
+      )}
     </View>
   );
 }
@@ -102,7 +154,7 @@ function NumberRow({
 function ChoiceRow({ field, value, onChange, flag, error }: RowProps<ChoiceField>) {
   const c = useLabTheme();
   return (
-    <View style={{ gap: Spacing.two }}>
+    <View style={{ gap: 10 }}>
       <RowHeader
         label={field.label}
         required={field.required}
@@ -111,7 +163,7 @@ function ChoiceRow({ field, value, onChange, flag, error }: RowProps<ChoiceField
       <View
         accessibilityRole="radiogroup"
         accessibilityLabel={field.label}
-        style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two }}>
+        style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
         {field.options.map((option) => {
           const selected = value === option.value;
           return (
@@ -125,7 +177,7 @@ function ChoiceRow({ field, value, onChange, flag, error }: RowProps<ChoiceField
         })}
       </View>
       {error ? (
-        <Text style={[font('regular'), { color: c.danger, fontSize: 12 }]}>{error}</Text>
+        <Text style={[font('regular'), { color: c.danger, fontSize: 14 }]}>{error}</Text>
       ) : null}
     </View>
   );
@@ -134,7 +186,7 @@ function ChoiceRow({ field, value, onChange, flag, error }: RowProps<ChoiceField
 function TextRow({ field, value, onChange, error }: RowProps<TextField>) {
   const c = useLabTheme();
   return (
-    <View style={{ gap: Spacing.two }}>
+    <View style={{ gap: 10 }}>
       <RowHeader label={field.label} required={field.required} />
       <LabInput
         value={value}
@@ -142,11 +194,73 @@ function TextRow({ field, value, onChange, error }: RowProps<TextField>) {
         multiline={field.multiline}
         hasError={!!error}
         accessibilityLabel={field.label}
-        style={field.multiline ? { minHeight: 96, textAlignVertical: 'top' } : undefined}
+        style={field.multiline ? { minHeight: 115, textAlignVertical: 'top' } : undefined}
       />
       {error ? (
-        <Text style={[font('regular'), { color: c.danger, fontSize: 12 }]}>{error}</Text>
+        <Text style={[font('regular'), { color: c.danger, fontSize: 14 }]}>{error}</Text>
       ) : null}
+    </View>
+  );
+}
+
+/** A test with no template: name, result, unit and the range the lab printed. */
+function MeasurementRow({
+  field,
+  value,
+  onChange,
+  flag,
+  error,
+  name,
+  onNameChange,
+  unit,
+  onUnitChange,
+  reference,
+  onReferenceChange,
+}: RowProps<MeasurementField> & {
+  name: string;
+  onNameChange: (value: string) => void;
+  unit: string;
+  onUnitChange: (value: string) => void;
+  reference: string;
+  onReferenceChange: (value: string) => void;
+}) {
+  const c = useLabTheme();
+  return (
+    <View style={{ gap: 10 }}>
+      <RowHeader label={field.label} required={field.required} flag={flag} />
+      <LabInput
+        value={name}
+        onChangeText={onNameChange}
+        placeholder="Test name, e.g. Interleukin 4"
+        hasError={error === 'Enter the test name'}
+        accessibilityLabel="Test name"
+      />
+      <View style={{ flexDirection: 'row', gap: 10 }}>
+        <LabInput
+          style={{ flex: 2 }}
+          value={value}
+          onChangeText={onChange}
+          placeholder="Result, e.g. 5.4, <2.6 or Positive"
+          hasError={!!error && error !== 'Enter the test name'}
+          accessibilityLabel="Result"
+        />
+        <LabInput
+          style={{ flex: 1 }}
+          value={unit}
+          onChangeText={onUnitChange}
+          placeholder="Unit"
+          accessibilityLabel="Unit"
+        />
+      </View>
+      <LabInput
+        value={reference}
+        onChangeText={onReferenceChange}
+        placeholder="Reference as printed, e.g. <13.1 (optional)"
+        accessibilityLabel="Reference range"
+      />
+      <Text style={[font('regular'), { color: error ? c.danger : c.textSecondary, fontSize: 14 }]}>
+        {error ?? ' '}
+      </Text>
     </View>
   );
 }
@@ -161,9 +275,9 @@ function RowHeader({ label, required, flag }: { label: string; required?: boolea
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        gap: Spacing.two,
+        gap: 10,
       }}>
-      <Text style={[font('semiBold'), { color: c.text, fontSize: 15, flexShrink: 1 }]}>
+      <Text style={[font('semiBold'), { color: c.text, fontSize: 18, flexShrink: 1 }]}>
         {label}
         {required ? <Text style={{ color: c.danger }}> *</Text> : null}
       </Text>
@@ -199,11 +313,11 @@ function LabInput({
           backgroundColor: c.surfaceMuted,
           borderColor: hasError ? c.danger : focused ? c.tint : c.border,
           borderWidth: 1,
-          borderRadius: 12,
-          paddingHorizontal: Spacing.three,
-          paddingVertical: Spacing.two + Spacing.one,
+          borderRadius: 14,
+          paddingHorizontal: 19,
+          paddingVertical: 14,
           color: c.text,
-          fontSize: 16,
+          fontSize: 19,
           ...font('medium'),
         },
         style,
