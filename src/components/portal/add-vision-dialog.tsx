@@ -118,7 +118,9 @@ export function AddVisionDialog({ patientId, patientName, onClosed, onSaved, onS
     setSubmitted(true);
     const firstInvalid = VISION_FIELD_ORDER.find((name) => errors[name]);
     if (firstInvalid) {
-      document.getElementById(`vision-${firstInvalid}`)?.focus();
+      if (typeof document !== 'undefined') {
+        document.getElementById(`vision-${firstInvalid}`)?.focus();
+      }
       return;
     }
 
