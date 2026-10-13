@@ -2,15 +2,17 @@ import type { ComponentProps } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 
 import type { HealthConditionResponse, LabTestResultResponse, PrescriptionResponse } from '@/api/vault.api';
+import type { VisionPrescriptionResponse } from '@/api/vision.types';
 import { BrandColors, Colors } from '@/constants/theme';
 import { getLabPanel, summarizePanel } from './lab-trends';
 import type { RemoteLabGroup } from './remote-panels';
 import type { LocalLabResult, LocalPrescription, PatientConditionStatus } from '@/types/local-records';
+import { isVisionExpired, summarizeVision } from './vision';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
 type ColorTheme = { [K in keyof typeof Colors.light]: string };
 
-export type VaultEntryKind = 'CONDITION' | 'PRESCRIPTION' | 'LAB_RESULT';
+export type VaultEntryKind = 'CONDITION' | 'PRESCRIPTION' | 'LAB_RESULT' | 'VISION';
 export type VaultEntrySource = 'PATIENT_DECLARED' | 'DOCTOR_VERIFIED' | 'CLINICIAN_ENTERED' | 'PATIENT_LOCAL';
 
 export interface VaultDisplayEntry {
@@ -37,6 +39,8 @@ export interface VaultDisplayEntry {
   prescriptionStatus?: 'ACTIVE' | 'FULFILLED' | 'CANCELLED';
   /** Patient's personal status; stored locally because the API has no lifecycle field for conditions. */
   conditionStatus?: PatientConditionStatus;
+  /** Glasses prescriptions only: the validity date has passed. */
+  visionExpired?: boolean;
 }
 
 // ---- formatting -------------------------------------------------------
@@ -127,6 +131,8 @@ export function accentForKind(kind: VaultEntryKind, theme: ColorTheme, condition
       return BrandColors.marigold;
     case 'LAB_RESULT':
       return BrandColors.clay;
+    case 'VISION':
+      return BrandColors.iris;
     case 'CONDITION':
     default:
       return conditionAccent(conditionType);
@@ -145,6 +151,8 @@ export function pillColorsForKind(
       return { bg: theme.pillMarigoldBg, fg: theme.pillMarigoldText };
     case 'LAB_RESULT':
       return { bg: theme.pillClayBg, fg: theme.pillClayText };
+    case 'VISION':
+      return { bg: theme.pillIrisBg, fg: theme.pillIrisText };
     case 'CONDITION':
     default:
       return conditionPillColors(conditionType, theme);
@@ -160,6 +168,7 @@ export function iconForKind(kind: VaultEntryKind, conditionType?: string): IconN
     return 'pulse';
   }
   if (kind === 'PRESCRIPTION') return 'medical';
+  if (kind === 'VISION') return 'eye';
   return 'flask';
 }
 
@@ -250,6 +259,23 @@ export function labGroupToDisplayEntry(group: RemoteLabGroup): VaultDisplayEntry
     isLocal: false,
     isEditable: false,
     viewHref: { pathname: '/vault/view-lab-result', params: { id: group.id } },
+  };
+}
+
+export function visionToDisplayEntry(rx: VisionPrescriptionResponse): VaultDisplayEntry {
+  const id = rx.id ?? `vision-${rx.issuedAt ?? ''}`;
+  return {
+    id,
+    kind: 'VISION',
+    title: 'Glasses prescription',
+    subtitle: [summarizeVision(rx), rx.doctorName].filter(Boolean).join(' · ') || undefined,
+    dateLabel: formatDateLabel(rx.issuedAt),
+    sortKey: rx.issuedAt ?? '',
+    source: 'DOCTOR_VERIFIED',
+    isLocal: false,
+    isEditable: false,
+    visionExpired: isVisionExpired(rx),
+    viewHref: { pathname: '/vault/view-vision-prescription', params: { id } },
   };
 }
 

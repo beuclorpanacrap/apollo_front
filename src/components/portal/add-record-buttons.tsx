@@ -4,15 +4,17 @@ import { Button } from '@/components/ui/button';
 import { Space } from '@/constants/theme';
 import type { RecordKind } from '@/context/clinician-vault-context';
 
-/** "Add encounter / prescription / lab result". Lab entry is hidden for roles that can't record labs (pharmacists). */
+/** "Add encounter / prescription / glasses / lab result". Lab and glasses entry are hidden for roles that can't record them. */
 export function AddRecordButtons({
   canLab,
+  canVision,
   canAdd,
   onAdd,
   disabled,
   stacked,
 }: {
   canLab: boolean;
+  canVision: boolean;
   canAdd: boolean;
   onAdd: (kind: RecordKind) => void;
   disabled?: boolean;
@@ -33,6 +35,9 @@ export function AddRecordButtons({
             </View>
           ) : null}
         </View>
+        {canVision ? (
+          <Button label="Glasses prescription" icon="add" size="compact" portal variant="secondary" fullWidth disabled={off} onPress={() => onAdd('vision')} />
+        ) : null}
       </View>
     );
   }
@@ -41,6 +46,7 @@ export function AddRecordButtons({
       <Button label="Add encounter" icon="add" size="compact" portal disabled={off} onPress={() => onAdd('encounter')} />
       <Button label="Add prescription" icon="add" size="compact" portal variant="secondary" disabled={off} onPress={() => onAdd('prescription')} />
       {canLab ? <Button label="Add lab result" icon="add" size="compact" portal variant="secondary" disabled={off} onPress={() => onAdd('lab')} /> : null}
+      {canVision ? <Button label="Add glasses prescription" icon="add" size="compact" portal variant="secondary" disabled={off} onPress={() => onAdd('vision')} /> : null}
     </View>
   );
 }

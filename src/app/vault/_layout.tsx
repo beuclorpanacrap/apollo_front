@@ -8,6 +8,7 @@ export default function VaultStackLayout() {
       <Stack.Screen name="add-condition" options={{ presentation: 'modal' }} />
       <Stack.Screen name="view-prescription" />
       <Stack.Screen name="view-lab-result" />
+      <Stack.Screen name="view-vision-prescription" />
       <Stack.Screen name="view-condition" />
       <Stack.Screen name="condition-search" />
     </Stack>

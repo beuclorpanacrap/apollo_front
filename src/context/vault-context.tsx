@@ -8,6 +8,7 @@ import {
   type LabTestResultResponse,
   type PrescriptionResponse,
 } from '@/api/vault.api';
+import { visionApi, type VisionPrescriptionResponse } from '@/api/vision.api';
 import { useAuth } from '@/context/auth-context';
 import { patientContext } from '@/utils/patient-context';
 import { groupRemoteLabs, type RemoteLabGroup } from '@/utils/remote-panels';
@@ -42,6 +43,7 @@ import {
   localPrescriptionToDisplayEntry,
   prescriptionToDisplayEntry,
   sortByDateDesc,
+  visionToDisplayEntry,
   type VaultDisplayEntry,
 } from '@/utils/vault-display';
 
@@ -55,6 +57,8 @@ interface VaultContextType {
   encounters: ClinicalEncounterSummaryDto[]; // fetched but not shown anywhere right now — see LOCAL_BRIDGE_NOTES.md
   prescriptions: PrescriptionResponse[];
   testResults: LabTestResultResponse[];
+  /** Glasses prescriptions issued by doctors (read-only for the patient). */
+  visionPrescriptions: VisionPrescriptionResponse[];
   localPrescriptions: LocalPrescription[];
   localLabResults: LocalLabResult[];
   /** Doctor-entered template results, put back together from the per-value backend records. */
@@ -64,6 +68,7 @@ interface VaultContextType {
   conditionEntries: VaultDisplayEntry[];
   conditionStatuses: Record<string, PatientConditionStatus>;
   prescriptionEntries: VaultDisplayEntry[]; // doctor rx + local rx
+  visionEntries: VaultDisplayEntry[];
   labResultEntries: VaultDisplayEntry[]; // doctor labs + local labs
 
   refresh: () => Promise<void>;
@@ -90,6 +95,7 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
   const [encounters, setEncounters] = useState<ClinicalEncounterSummaryDto[]>([]);
   const [prescriptions, setPrescriptions] = useState<PrescriptionResponse[]>([]);
   const [testResults, setTestResults] = useState<LabTestResultResponse[]>([]);
+  const [visionPrescriptions, setVisionPrescriptions] = useState<VisionPrescriptionResponse[]>([]);
   const [localPrescriptions, setLocalPrescriptions] = useState<LocalPrescription[]>([]);
   const [localLabResults, setLocalLabResults] = useState<LocalLabResult[]>([]);
   const [conditionStatuses, setConditionStatuses] = useState<Record<string, PatientConditionStatus>>({});
@@ -107,10 +113,12 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
     try {
       const scopeId = user?.userId || user?.profileId || user?.email;
       setLocalRecordsScope(scopeId);
-      const [timeline, rx, labs, localRx, localLabs, savedConditionStatuses] = await Promise.all([
+      const [timeline, rx, labs, vision, localRx, localLabs, savedConditionStatuses] = await Promise.all([
         vaultApi.getTimeline(),
         vaultApi.getPrescriptions().catch(() => [] as PrescriptionResponse[]),
         vaultApi.getTestResults().catch(() => [] as LabTestResultResponse[]),
+        // Like rx and labs, a failure here must not break the rest of the vault (a server without this endpoint just has none).
+        visionApi.list().catch(() => [] as VisionPrescriptionResponse[]),
         getLocalPrescriptions(),
         getLocalLabResults(),
         getLocalConditionStatuses(),
@@ -119,6 +127,7 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
       setEncounters(timeline.encounters ?? []);
       setPrescriptions(rx);
       setTestResults(labs);
+      setVisionPrescriptions(vision);
       setLocalPrescriptions(localRx);
       setLocalLabResults(localLabs);
       setConditionStatuses(savedConditionStatuses);
@@ -143,6 +152,7 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
       setEncounters([]);
       setPrescriptions([]);
       setTestResults([]);
+      setVisionPrescriptions([]);
       setLocalPrescriptions([]);
       setLocalLabResults([]);
       setConditionStatuses({});
@@ -269,6 +279,11 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
     [prescriptions, localPrescriptions]
   );
 
+  const visionEntries = useMemo(
+    () => sortByDateDesc(visionPrescriptions.map(visionToDisplayEntry)),
+    [visionPrescriptions]
+  );
+
   const { remoteLabGroups, ungroupedTestResults } = useMemo(() => {
     const { groups, singles } = groupRemoteLabs(testResults, patientContext(user ?? {}));
     return { remoteLabGroups: groups, ungroupedTestResults: singles as LabTestResultResponse[] };
@@ -294,12 +309,14 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
         encounters,
         prescriptions,
         testResults,
+        visionPrescriptions,
         localPrescriptions,
         localLabResults,
         remoteLabGroups,
         conditionEntries,
         conditionStatuses,
         prescriptionEntries,
+        visionEntries,
         labResultEntries,
         refresh,
         getLocalPrescriptionById,

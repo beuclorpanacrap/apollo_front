@@ -4,6 +4,7 @@ import { Redirect, useRouter } from 'expo-router';
 import { ApiError } from '@/api/client';
 import { clearActiveVault, doctorApi, setActiveVault, type UnlockedVault } from '@/api/doctor.api';
 import { AddRecordDialog, type SavedRecord } from '@/components/portal/add-record-dialog';
+import { AddVisionDialog } from '@/components/portal/add-vision-dialog';
 import { LockedView } from '@/components/portal/locked-view';
 import { PortalLoading } from '@/components/portal/portal-loading';
 import { PortalShell, useNavLock } from '@/components/portal/portal-shell';
@@ -14,7 +15,7 @@ import { useToast } from '@/components/ui/toast';
 import { useAuth } from '@/context/auth-context';
 import { useClinicianVault, type RecordKind } from '@/context/clinician-vault-context';
 import { prefersReducedMotionNow } from '@/hooks/use-reduced-motion';
-import { canRecordLabs, fullName } from '@/utils/clinician-format';
+import { canPrescribeVision, canRecordLabs, fullName } from '@/utils/clinician-format';
 import { clinicianSignInHref } from '@/utils/portal-routes';
 
 export { PortalErrorBoundary as ErrorBoundary } from '@/components/portal/route-error';
@@ -34,8 +35,8 @@ export default function DoctorScreen() {
   );
 }
 
-const TAB_FOR: Record<RecordKind, VaultTab> = { encounter: 'encounters', prescription: 'prescriptions', lab: 'labs' };
-const NOUN: Record<RecordKind, string> = { encounter: 'Encounter', prescription: 'Prescription', lab: 'Lab result' };
+const TAB_FOR: Record<RecordKind, VaultTab> = { encounter: 'encounters', prescription: 'prescriptions', lab: 'labs', vision: 'vision' };
+const NOUN: Record<RecordKind, string> = { encounter: 'Encounter', prescription: 'Prescription', lab: 'Lab result', vision: 'Glasses prescription' };
 const SLOW_AFTER_MS = 8000;
 
 function DoctorDashboard() {
@@ -95,6 +96,7 @@ function DoctorDashboard() {
   useNavLock(status === 'validating');
 
   const canLab = canRecordLabs(user?.doctorRole);
+  const canVision = canPrescribeVision(user?.doctorRole);
 
   // Add-record dialog + active records tab.
   const [entry, setEntry] = useState<{ kind: RecordKind; key: number } | null>(null);
@@ -190,6 +192,7 @@ function DoctorDashboard() {
           vault={vault}
           recentIds={recentIds}
           canLab={canLab}
+          canVision={canVision}
           tab={tab}
           onTabChange={setTab}
           onAdd={(kind) => {
@@ -227,15 +230,26 @@ function DoctorDashboard() {
       )}
 
       {entry && vault && patientId ? (
-        <AddRecordDialog
-          key={entry.key}
-          kind={entry.kind}
-          patientId={patientId}
-          patientName={fullName(vault.patient)}
-          onClosed={() => setEntry(null)}
-          onSaved={onSaved}
-          onSignInAgain={signInAgain}
-        />
+        entry.kind === 'vision' ? (
+          <AddVisionDialog
+            key={entry.key}
+            patientId={patientId}
+            patientName={fullName(vault.patient)}
+            onClosed={() => setEntry(null)}
+            onSaved={(record) => onSaved({ kind: 'vision', record })}
+            onSignInAgain={signInAgain}
+          />
+        ) : (
+          <AddRecordDialog
+            key={entry.key}
+            kind={entry.kind}
+            patientId={patientId}
+            patientName={fullName(vault.patient)}
+            onClosed={() => setEntry(null)}
+            onSaved={onSaved}
+            onSignInAgain={signInAgain}
+          />
+        )
       ) : null}
 
       <Dialog

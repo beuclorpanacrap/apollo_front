@@ -27,6 +27,7 @@ const brand = {
   plum: '#CE4685', // Chronic condition — vivid, berry-leaning
   coral: '#D9634A', // Allergy — vivid, red-leaning (caution)
   honey: '#DDAC3D', // Lifestyle — vivid, yellow-leaning (upbeat)
+  iris: '#4F6FB5', // Vision prescriptions — the one cool blue, so glasses read apart from medication
 } as const;
 
 export const BrandColors = brand;
@@ -59,6 +60,8 @@ export const Colors = {
     pillCoralText: '#8C3D2A',
     pillHoneyBg: '#F6EAC7',
     pillHoneyText: '#6B5518',
+    pillIrisBg: '#DDE6F7',
+    pillIrisText: '#2B4577',
     danger: '#D32F2F',
     dangerBg: '#FFEBEE',
     // ---- Accessibility + portal tokens (additive; existing values above are untouched) ----
@@ -107,6 +110,8 @@ export const Colors = {
     pillCoralText: '#F0BBAC',
     pillHoneyBg: '#3C351C',
     pillHoneyText: '#EDDDA0',
+    pillIrisBg: '#25344F',
+    pillIrisText: '#BCCFF2',
     danger: '#E57373',
     dangerBg: '#4A2020',
     textMuted: '#C2CEBD', // 6.01 on card, 7.41 on page, 4.72 on backgroundSelected

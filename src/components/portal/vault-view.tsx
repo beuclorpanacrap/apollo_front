@@ -11,6 +11,7 @@ import {
   LabGroupCard,
   LabPanelCard,
   PrescriptionCard,
+  VisionPrescriptionCard,
 } from '@/components/portal/record-cards';
 import { useSessionCountdown } from '@/components/portal/session-timer';
 import { Timeline, TIMELINE_ICONS, type TimelineEntry } from '@/components/portal/timeline';
@@ -44,10 +45,11 @@ import {
 } from '@/utils/clinician-format';
 import { patientContext } from '@/utils/patient-context';
 import { groupRemoteLabs, type RemoteLabGroup } from '@/utils/remote-panels';
+import { summarizeVision } from '@/utils/vision';
 import { accentForKind, formatConditionType, iconForKind, pillColorsForKind } from '@/utils/vault-display';
 import { webProps, webStyle } from '@/utils/web-props';
 
-export type VaultTab = 'encounters' | 'prescriptions' | 'labs' | 'conditions' | 'timeline';
+export type VaultTab = 'encounters' | 'prescriptions' | 'vision' | 'labs' | 'conditions' | 'timeline';
 
 /** A lab-tab entry: a multi-value panel entered from a template, or one test's results grouped for a trend. */
 type LabItem =
@@ -62,6 +64,7 @@ type Props = {
   vault: UnlockedVault;
   recentIds: ReadonlySet<string>;
   canLab: boolean;
+  canVision: boolean;
   tab: VaultTab;
   onTabChange: (tab: VaultTab) => void;
   onAdd: (kind: RecordKind) => void;
@@ -86,7 +89,7 @@ function SectionHeading({ title, aside, id }: { title: string; aside?: ReactNode
   );
 }
 
-export function VaultView({ vault, recentIds, canLab, tab, onTabChange, onAdd, onClose, busy }: Props) {
+export function VaultView({ vault, recentIds, canLab, canVision, tab, onTabChange, onAdd, onClose, busy }: Props) {
   const theme = useTheme();
   const { width, isPhone } = useBreakpoint();
   const now = useMinuteClock();
@@ -107,6 +110,7 @@ export function VaultView({ vault, recentIds, canLab, tab, onTabChange, onAdd, o
   const lifestyle = useMemo(() => conditions.filter((c) => c.type === 'LIFESTYLE'), [conditions]);
   const encounters = useMemo(() => sortNewestFirst(vault.encounterHistory), [vault.encounterHistory]);
   const prescriptions = useMemo(() => sortNewestFirst(vault.prescriptions), [vault.prescriptions]);
+  const visionRx = useMemo(() => sortNewestFirst(vault.visionPrescriptions), [vault.visionPrescriptions]);
   // Values entered together from one template (e.g. a blood count) read as one panel; everything else is grouped per test.
   const { panels, singles } = useMemo(() => {
     const { groups, singles: rest } = groupRemoteLabs(vault.testResults ?? [], patientContext(vault.patient ?? {}));
@@ -144,6 +148,15 @@ export function VaultView({ vault, recentIds, canLab, tab, onTabChange, onAdd, o
         icon: TIMELINE_ICONS.prescription,
         label: 'Prescription',
       })),
+      ...visionRx.map<TimelineEntry>((v, i) => ({
+        id: `vision-${v.id ?? i}`,
+        kind: 'vision',
+        date: bestDate(v),
+        title: 'Glasses prescription',
+        subtitle: [summarizeVision(v), v.doctorName && `Prescribed by ${v.doctorName}`].filter(Boolean).join(' · ') || undefined,
+        icon: TIMELINE_ICONS.vision,
+        label: 'Glasses',
+      })),
       ...panels.map<TimelineEntry>((panel) => ({
         id: `lab-${panel.id}`,
         kind: 'lab',
@@ -166,11 +179,11 @@ export function VaultView({ vault, recentIds, canLab, tab, onTabChange, onAdd, o
     // Same ordering rule as the tabs: best date first, stable by id.
     const time = (e: TimelineEntry) => (e.date ? Date.parse(e.date.length === 10 ? `${e.date}T00:00:00` : e.date) || 0 : 0);
     return entries.sort((a, b) => time(b) - time(a) || a.id.localeCompare(b.id));
-  }, [encounters, prescriptions, panels, singles]);
+  }, [encounters, prescriptions, visionRx, panels, singles]);
 
   // ---- per-tab search + pagination --------------------------------------------------------------
-  const [queries, setQueries] = useState<Record<VaultTab, string>>({ encounters: '', prescriptions: '', labs: '', conditions: '', timeline: '' });
-  const [pages, setPages] = useState<Record<VaultTab, number>>({ encounters: 1, prescriptions: 1, labs: 1, conditions: 1, timeline: 1 });
+  const [queries, setQueries] = useState<Record<VaultTab, string>>({ encounters: '', prescriptions: '', vision: '', labs: '', conditions: '', timeline: '' });
+  const [pages, setPages] = useState<Record<VaultTab, number>>({ encounters: 1, prescriptions: 1, vision: 1, labs: 1, conditions: 1, timeline: 1 });
   const setQuery = (key: VaultTab, value: string) => {
     setQueries((current) => ({ ...current, [key]: value }));
     setPages((current) => ({ ...current, [key]: 1 }));
@@ -183,8 +196,8 @@ export function VaultView({ vault, recentIds, canLab, tab, onTabChange, onAdd, o
   useEffect(() => {
     if (!newest || seenNewest.current === newest) return;
     seenNewest.current = newest;
-    setQueries({ encounters: '', prescriptions: '', labs: '', conditions: '', timeline: '' });
-    setPages({ encounters: 1, prescriptions: 1, labs: 1, conditions: 1, timeline: 1 });
+    setQueries({ encounters: '', prescriptions: '', vision: '', labs: '', conditions: '', timeline: '' });
+    setPages({ encounters: 1, prescriptions: 1, vision: 1, labs: 1, conditions: 1, timeline: 1 });
   }, [newest]);
 
   const includes = (haystack: (string | undefined)[], query: string) => {
@@ -195,6 +208,9 @@ export function VaultView({ vault, recentIds, canLab, tab, onTabChange, onAdd, o
   const filtered = {
     encounters: encounters.filter((e) => includes([e.diagnosis, e.clinicalNotes, e.doctorName, e.doctorSpecialty], queries.encounters)),
     prescriptions: prescriptions.filter((p) => includes([p.medicationName, p.dosage, p.instructions, p.status, p.doctorName], queries.prescriptions)),
+    vision: visionRx.filter((v) =>
+      includes([summarizeVision(v), v.notes, v.doctorName, 'glasses', 'spectacles', 'eye', 'vision'], queries.vision),
+    ),
     labs: labItems.filter((item) =>
       item.kind === 'panel'
         ? includes([item.panel.template.name, item.panel.doctorName], queries.labs)
@@ -208,11 +224,12 @@ export function VaultView({ vault, recentIds, canLab, tab, onTabChange, onAdd, o
     { key: 'conditions', label: 'Conditions & allergies', icon: 'pulse-outline', count: conditions.length },
     { key: 'encounters', label: 'Encounters', icon: 'calendar-outline', count: encounters.length },
     { key: 'prescriptions', label: 'Prescriptions', icon: 'medical-outline', count: prescriptions.length },
+    { key: 'vision', label: 'Glasses', icon: 'eye-outline', count: visionRx.length },
     { key: 'labs', label: 'Test results', icon: 'flask-outline', count: labCount },
     { key: 'timeline', label: 'Timeline', icon: 'time-outline' },
   ];
 
-  const totals = { encounters: encounters.length, prescriptions: prescriptions.length, labs: labItems.length, conditions: conditions.length, timeline: timeline.length };
+  const totals = { encounters: encounters.length, prescriptions: prescriptions.length, vision: visionRx.length, labs: labItems.length, conditions: conditions.length, timeline: timeline.length };
   const pageSize = tab === 'timeline' ? TIMELINE_PAGE_SIZE : PAGE_SIZE;
   const list = filtered[tab];
   const pageCount = Math.max(1, Math.ceil(list.length / pageSize));
@@ -248,6 +265,13 @@ export function VaultView({ vault, recentIds, canLab, tab, onTabChange, onAdd, o
       description: 'Prescriptions you issue appear here with their status and validity.',
       action: patientId ? { label: 'Add prescription', onPress: () => onAdd('prescription') } : undefined,
     },
+    vision: {
+      title: 'No glasses prescriptions yet',
+      description: canVision
+        ? 'Glasses prescriptions you issue appear here with the values for each eye.'
+        : 'Glasses prescriptions issued by doctors appear here.',
+      action: patientId && canVision ? { label: 'Add glasses prescription', onPress: () => onAdd('vision') } : undefined,
+    },
     labs: {
       title: 'No test results yet',
       description: canLab ? 'Record a lab result to see values and trends here.' : 'Lab results recorded by other clinicians appear here.',
@@ -262,9 +286,10 @@ export function VaultView({ vault, recentIds, canLab, tab, onTabChange, onAdd, o
       description: 'Encounters, prescriptions and lab results appear here in date order.',
     },
   };
-  const emptyIcon: Record<VaultTab, 'calendar-outline' | 'medical-outline' | 'flask-outline' | 'pulse-outline' | 'time-outline'> = {
+  const emptyIcon: Record<VaultTab, 'calendar-outline' | 'medical-outline' | 'eye-outline' | 'flask-outline' | 'pulse-outline' | 'time-outline'> = {
     encounters: 'calendar-outline',
     prescriptions: 'medical-outline',
+    vision: 'eye-outline',
     labs: 'flask-outline',
     conditions: 'pulse-outline',
     timeline: 'time-outline',
@@ -279,6 +304,10 @@ export function VaultView({ vault, recentIds, canLab, tab, onTabChange, onAdd, o
       case 'prescriptions':
         return filtered.prescriptions.slice(start, start + pageSize).map((record, i) => (
           <PrescriptionCard key={record.id ?? i} record={record} highlight={!!record.id && recentIds.has(record.id)} encounters={encounters} now={now} />
+        ));
+      case 'vision':
+        return filtered.vision.slice(start, start + pageSize).map((record, i) => (
+          <VisionPrescriptionCard key={record.id ?? i} record={record} highlight={!!record.id && recentIds.has(record.id)} now={now} />
         ));
       case 'labs':
         return filtered.labs.slice(start, start + pageSize).map((item) =>
@@ -382,11 +411,11 @@ export function VaultView({ vault, recentIds, canLab, tab, onTabChange, onAdd, o
       <Enter kind="rise" delay={120}>
         <SectionHeading
           title="Records"
-          aside={isPhone ? undefined : <AddRecordButtons canLab={canLab} canAdd={!!patientId} onAdd={onAdd} disabled={busy} />}
+          aside={isPhone ? undefined : <AddRecordButtons canLab={canLab} canVision={canVision} canAdd={!!patientId} onAdd={onAdd} disabled={busy} />}
         />
         {isPhone ? (
           <View style={{ marginBottom: Space[4] }}>
-            <AddRecordButtons canLab={canLab} canAdd={!!patientId} onAdd={onAdd} disabled={busy} stacked />
+            <AddRecordButtons canLab={canLab} canVision={canVision} canAdd={!!patientId} onAdd={onAdd} disabled={busy} stacked />
           </View>
         ) : null}
         {!patientId ? (

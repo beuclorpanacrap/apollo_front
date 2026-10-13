@@ -11,10 +11,16 @@ import {
 
 import { activeVault, clearActiveVault, setActiveVault, type UnlockedVault } from '@/api/doctor.api';
 import { useAuth } from '@/context/auth-context';
-import type { Condition, Encounter, LabResult, Prescription } from '@/utils/clinician-format';
+import type { Condition, Encounter, LabResult, Prescription, VisionPrescription } from '@/utils/clinician-format';
 
-export type RecordKind = 'encounter' | 'prescription' | 'lab';
-type RecordFor<K extends RecordKind> = K extends 'encounter' ? Encounter : K extends 'prescription' ? Prescription : LabResult;
+export type RecordKind = 'encounter' | 'prescription' | 'lab' | 'vision';
+type RecordFor<K extends RecordKind> = K extends 'encounter'
+  ? Encounter
+  : K extends 'prescription'
+    ? Prescription
+    : K extends 'vision'
+      ? VisionPrescription
+      : LabResult;
 
 type ClinicianVaultValue = {
   /** The unlocked vault, or `null` when locked / expired. Always a fresh object after any change. */
@@ -77,7 +83,9 @@ export function ClinicianVaultProvider({ children }: { children: ReactNode }) {
         ? { ...current, testResults: [...(current.testResults ?? []), record as LabResult] }
         : kind === 'prescription'
           ? { ...current, prescriptions: [...(current.prescriptions ?? []), record as Prescription] }
-          : { ...current, encounterHistory: [...(current.encounterHistory ?? []), record as Encounter] };
+          : kind === 'vision'
+            ? { ...current, visionPrescriptions: [...(current.visionPrescriptions ?? []), record as VisionPrescription] }
+            : { ...current, encounterHistory: [...(current.encounterHistory ?? []), record as Encounter] };
     });
     const id = (record as { id?: string }).id;
     if (id) {

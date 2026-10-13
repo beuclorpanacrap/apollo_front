@@ -18,14 +18,19 @@ import {
   type Encounter,
   type LabResult,
   type Prescription,
+  type VisionPrescription,
 } from '@/utils/clinician-format';
 
 type Schemas = components['schemas'];
 
+/** The kinds this generic dialog writes; glasses prescriptions have their own form (add-vision-dialog). */
+type DialogKind = Exclude<RecordKind, 'vision'>;
+
 export type SavedRecord =
   | { kind: 'encounter'; record: Encounter }
   | { kind: 'prescription'; record: Prescription }
-  | { kind: 'lab'; record: LabResult };
+  | { kind: 'lab'; record: LabResult }
+  | { kind: 'vision'; record: VisionPrescription };
 
 type Values = Record<string, string>;
 type Errors = Record<string, string>;
@@ -33,13 +38,13 @@ type Errors = Record<string, string>;
 const NOTES_MAX = 2000;
 const SHORT_MAX = 255;
 
-const TITLES: Record<RecordKind, { title: string; icon: 'calendar-outline' | 'medical-outline' | 'flask-outline'; noun: string }> = {
+const TITLES: Record<DialogKind, { title: string; icon: 'calendar-outline' | 'medical-outline' | 'flask-outline'; noun: string }> = {
   encounter: { title: 'Add encounter', icon: 'calendar-outline', noun: 'encounter' },
   prescription: { title: 'Add prescription', icon: 'medical-outline', noun: 'prescription' },
   lab: { title: 'Add lab result', icon: 'flask-outline', noun: 'lab result' },
 };
 
-const initialValues = (kind: RecordKind): Values =>
+const initialValues = (kind: DialogKind): Values =>
   kind === 'encounter'
     ? { diagnosis: '', clinicalNotes: '', encounterDate: toDateInputValue() }
     : kind === 'prescription'
@@ -48,13 +53,13 @@ const initialValues = (kind: RecordKind): Values =>
       : { testName: '', numericValue: '', unit: '', recordedAt: toDateTimeInputValue() };
 
 /** Field order drives which invalid field receives focus first. */
-const FIELD_ORDER: Record<RecordKind, string[]> = {
+const FIELD_ORDER: Record<DialogKind, string[]> = {
   encounter: ['diagnosis', 'clinicalNotes', 'encounterDate'],
   prescription: ['medicationName', 'dosage', 'instructions', 'expiresAt'],
   lab: ['testName', 'numericValue', 'unit', 'recordedAt'],
 };
 
-function validate(kind: RecordKind, v: Values): Errors {
+function validate(kind: DialogKind, v: Values): Errors {
   const errors: Errors = {};
   const need = (name: string, message: string) => {
     if (!v[name]?.trim()) errors[name] = message;
@@ -101,7 +106,7 @@ function describeError(error: unknown): { message: string; unauthorized: boolean
 }
 
 type Props = {
-  kind: RecordKind;
+  kind: DialogKind;
   patientId: string;
   patientName: string;
   /** Called once the dialog has finished closing (so the parent can unmount it). */

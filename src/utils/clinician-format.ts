@@ -1,10 +1,12 @@
 import type { components } from '@/api/types';
+import type { VisionPrescriptionResponse } from '@/api/vision.types';
 
 type Schemas = components['schemas'];
 export type Encounter = Schemas['ClinicalEncounterSummaryDto'];
 export type Prescription = Schemas['PrescriptionResponse'];
 export type LabResult = Schemas['LabTestResultResponse'];
 export type Condition = Schemas['HealthConditionResponse'];
+export type VisionPrescription = VisionPrescriptionResponse;
 export type PatientSummary = Schemas['PatientProfileSummaryDto'];
 
 // ---------------------------------------------------------------------------------------------
@@ -28,10 +30,15 @@ export function canRecordLabs(role: unknown): boolean {
   return role === 'GENERAL_PRACTITIONER' || role === 'SPECIALIST' || role === 'LAB_TECHNICIAN';
 }
 
+/** Glasses prescriptions come from doctors; lab technicians and pharmacists don't issue them. */
+export function canPrescribeVision(role: unknown): boolean {
+  return role === 'GENERAL_PRACTITIONER' || role === 'SPECIALIST';
+}
+
 /** One line per role describing what it can do (derived from the existing permission behavior). */
 export const DOCTOR_ROLE_CAPABILITIES: Record<DoctorRole, string> = {
-  GENERAL_PRACTITIONER: 'Can add encounters, prescriptions and lab results.',
-  SPECIALIST: 'Can add encounters, prescriptions and lab results.',
+  GENERAL_PRACTITIONER: 'Can add encounters, prescriptions, glasses prescriptions and lab results.',
+  SPECIALIST: 'Can add encounters, prescriptions, glasses prescriptions and lab results.',
   LAB_TECHNICIAN: 'Can add encounters, prescriptions and lab results.',
   PHARMACIST: 'Can add encounters and prescriptions. Cannot add lab results.',
 };

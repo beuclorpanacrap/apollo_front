@@ -44,7 +44,7 @@ export function EntryCard({ entry, showKindLabel = false }: EntryCardProps) {
           </View>
           {showKindLabel && entry.kind !== 'CONDITION' ? (
             <Text style={[styles.kindLabel, { color: accent }]}>
-              {entry.kind === 'PRESCRIPTION' ? 'Prescription' : 'Test result'}
+              {entry.kind === 'PRESCRIPTION' ? 'Prescription' : entry.kind === 'VISION' ? 'Glasses prescription' : 'Test result'}
             </Text>
           ) : null}
           {entry.subtitle ? (
@@ -62,6 +62,9 @@ export function EntryCard({ entry, showKindLabel = false }: EntryCardProps) {
               />
               {entry.kind === 'CONDITION' && entry.conditionStatus === 'RESOLVED' ? (
                 <Badge label="Resolved" bg={theme.surfaceMuted} fg={theme.textSecondary} icon="checkmark-circle" />
+              ) : null}
+              {entry.kind === 'VISION' && entry.visionExpired ? (
+                <Badge label="Expired" bg={theme.pillMarigoldBg} fg={theme.pillMarigoldText} icon="time" />
               ) : null}
             </View>
             <Ionicons name="chevron-forward" size={16} color={theme.textTertiary} />

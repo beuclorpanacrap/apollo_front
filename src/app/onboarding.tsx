@@ -27,7 +27,16 @@ const GENDER_OPTIONS: { label: string; value: GenderOption }[] = [
 ];
 
 const DEFAULT_ALLERGIES = ['Penicillin', 'Latex', 'Peanuts', 'Sulfa Drugs', 'No Known Allergies'];
-const DEFAULT_CONDITIONS = ['Asthma', 'Hypertension', 'Type 2 Diabetes', 'None'];
+const DEFAULT_CONDITIONS = [
+  'Asthma',
+  'Hypertension',
+  'Type 2 Diabetes',
+  'Myopia',
+  'Astigmatism',
+  'Glaucoma',
+  'Cataracts',
+  'None',
+];
 const TOBACCO_OPTIONS = ['Non-Smoker', 'Smoker'];
 const ALCOHOL_OPTIONS = ['Non-Drinker', 'Occasional / Social'];
 const BLOOD_TYPE_OPTIONS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'Unknown'];

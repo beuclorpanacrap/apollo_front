@@ -16,10 +16,11 @@ import { useVault } from '@/context/vault-context';
 import { buildTrendSeries } from '@/utils/lab-trends';
 import type { VaultDisplayEntry } from '@/utils/vault-display';
 
-type TabKey = 'prescriptions' | 'labs' | 'conditions' | 'encounters';
+type TabKey = 'prescriptions' | 'vision' | 'labs' | 'conditions' | 'encounters';
 
 const TABS: { key: TabKey; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
   { key: 'prescriptions', label: 'Prescriptions', icon: 'medical' },
+  { key: 'vision', label: 'Glasses', icon: 'eye' },
   { key: 'labs', label: 'Test Results', icon: 'flask' },
   { key: 'conditions', label: 'Conditions', icon: 'clipboard' },
   { key: 'encounters', label: 'Consults', icon: 'chatbubbles' },
@@ -136,6 +137,7 @@ export default function VaultScreen() {
     error,
     refresh,
     prescriptionEntries,
+    visionEntries,
     labResultEntries,
     conditionEntries,
     encounters,
@@ -168,8 +170,9 @@ export default function VaultScreen() {
       );
       return orderEntries(matching, orderBy);
     }
+    if (activeTab === 'vision') return orderEntries(visionEntries, orderBy);
     return orderEntries(activeTab === 'labs' ? labResultEntries : visibleConditionEntries, orderBy);
-  }, [activeTab, prescriptionEntries, labResultEntries, visibleConditionEntries, rxFilter, orderBy]);
+  }, [activeTab, prescriptionEntries, visionEntries, labResultEntries, visibleConditionEntries, rxFilter, orderBy]);
 
   const orderedEncounters = useMemo(() => {
     return [...encounters].sort((a, b) => {
@@ -210,7 +213,9 @@ export default function VaultScreen() {
           ? 'lab test result'
           : entry.kind === 'PRESCRIPTION'
             ? 'prescription medication'
-            : 'health condition';
+            : entry.kind === 'VISION'
+              ? 'glasses eye vision prescription'
+              : 'health condition';
       const searchable = [
         entry.title,
         entry.subtitle,
@@ -230,7 +235,7 @@ export default function VaultScreen() {
   // Lets Home's "jump to prescriptions" shortcut land on a specific tab in
   // one tap instead of landing on Vault and requiring a second tap.
   useEffect(() => {
-    if (params.tab === 'prescriptions' || params.tab === 'labs' || params.tab === 'conditions' || params.tab === 'encounters') {
+    if (params.tab === 'prescriptions' || params.tab === 'vision' || params.tab === 'labs' || params.tab === 'conditions' || params.tab === 'encounters') {
       setActiveTab(params.tab);
       setSearchQuery('');
     }
@@ -295,7 +300,7 @@ export default function VaultScreen() {
             <TextInput
               value={searchQuery}
               onChangeText={setSearchQuery}
-              placeholder={`Search ${activeTab === 'labs' ? 'test results' : activeTab === 'encounters' ? 'consultations' : activeTab}`}
+              placeholder={`Search ${activeTab === 'labs' ? 'test results' : activeTab === 'encounters' ? 'consultations' : activeTab === 'vision' ? 'glasses prescriptions' : activeTab}`}
               placeholderTextColor={theme.textTertiary}
               style={styles.searchInput}
               returnKeyType="search"
@@ -420,6 +425,24 @@ export default function VaultScreen() {
                     icon="medical"
                     title="No prescriptions here"
                     description="Medications your doctor prescribes, or that you add yourself, will show up here."
+                  />
+                ) : (
+                  <View style={styles.list}>
+                    {categoryEntries.map((entry) => (
+                      <EntryCard key={entry.id} entry={entry} />
+                    ))}
+                  </View>
+                )}
+              </>
+            )}
+
+            {activeTab === 'vision' && (
+              <>
+                {categoryEntries.length === 0 ? (
+                  <EmptyState
+                    icon="eye"
+                    title="No glasses prescriptions yet"
+                    description="Prescriptions for glasses from your doctor will show up here, with the values for each eye."
                   />
                 ) : (
                   <View style={styles.list}>

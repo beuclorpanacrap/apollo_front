@@ -14,7 +14,7 @@ type IconName = ComponentProps<typeof Ionicons>['name'];
 
 export type TimelineEntry = {
   id: string;
-  kind: 'encounter' | 'prescription' | 'lab';
+  kind: 'encounter' | 'prescription' | 'lab' | 'vision';
   /** ISO date used for ordering and the date column. */
   date?: string;
   title: string;
@@ -24,7 +24,7 @@ export type TimelineEntry = {
 };
 
 /**
- * Encounters, prescriptions and lab results interleaved by date, newest first and grouped by month.
+ * Encounters, prescriptions, glasses and lab results interleaved by date, newest first and grouped by month.
  * Read-only: each entry is a compact summary; the full record lives in its own tab.
  */
 export function Timeline({ entries }: { entries: readonly TimelineEntry[] }) {
@@ -47,7 +47,14 @@ export function Timeline({ entries }: { entries: readonly TimelineEntry[] }) {
             {group.month}
           </Text>
           {group.items.map((entry, index) => {
-            const kind = entry.kind === 'encounter' ? null : entry.kind === 'prescription' ? 'PRESCRIPTION' : 'LAB_RESULT';
+            const kind =
+              entry.kind === 'encounter'
+                ? null
+                : entry.kind === 'prescription'
+                  ? 'PRESCRIPTION'
+                  : entry.kind === 'vision'
+                    ? 'VISION'
+                    : 'LAB_RESULT';
             const accent = kind ? accentForKind(kind, theme) : theme.tintStrong;
             const colors = kind ? pillColorsForKind(kind, theme) : { bg: theme.pillGreenBg, fg: theme.pillGreenText };
             const date = parseDateInput(entry.date);
@@ -94,6 +101,7 @@ export const TIMELINE_ICONS = {
   encounter: 'calendar-outline' as IconName,
   prescription: iconForKind('PRESCRIPTION'),
   lab: iconForKind('LAB_RESULT'),
+  vision: iconForKind('VISION'),
 };
 
 const styles = StyleSheet.create({

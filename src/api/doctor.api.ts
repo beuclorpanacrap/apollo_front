@@ -1,6 +1,11 @@
 import { apiClient } from './client';
 import { components } from './types';
-export type UnlockedVault = components['schemas']['UnlockedVaultResponse'];
+import type { VisionPrescriptionResponse } from './vision.types';
+// `visionPrescriptions` is not in the generated schema yet (see vision.types.ts); drop the extension once it is.
+export type UnlockedVault = components['schemas']['UnlockedVaultResponse'] & {
+  /** Glasses prescriptions issued to the patient (accessible to clinicians). */
+  visionPrescriptions?: VisionPrescriptionResponse[];
+};
 // Health records and PINs are never persisted in browser storage.
 export let activeVault: UnlockedVault | null = null;
 export function clearActiveVault() { activeVault = null; }

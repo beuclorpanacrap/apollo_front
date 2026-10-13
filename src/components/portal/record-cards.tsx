@@ -8,6 +8,7 @@ import { pressState, useInteractive } from '@/components/ui/interactive';
 import { Sparkline } from '@/components/ui/sparkline';
 import { allFields } from '@/components/evaluate';
 import type { Flag } from '@/components/types';
+import { VisionTable } from '@/components/vision/vision-table';
 import { BrandColors, Fonts, Radii, Space } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import {
@@ -22,7 +23,9 @@ import {
   type LabGroup,
   type LabResult,
   type Prescription,
+  type VisionPrescription,
 } from '@/utils/clinician-format';
+import { formatPupillaryDistance, isVisionExpired } from '@/utils/vision';
 import type { RemoteLabGroup } from '@/utils/remote-panels';
 import { accentForKind, formatConditionType, iconForKind, pillColorsForKind } from '@/utils/vault-display';
 import { webProps } from '@/utils/web-props';
@@ -258,6 +261,58 @@ export function PrescriptionCard({
             From encounter “{linked.diagnosis?.trim() || 'Untitled encounter'}”, {formatDate(linked.encounterDate)}
           </Footer>
         ) : null}
+      </Card>
+    </HighlightFrame>
+  );
+}
+
+// ---------------------------------------------------------------------------------------------
+// Glasses prescription
+// ---------------------------------------------------------------------------------------------
+
+export function VisionPrescriptionCard({
+  record,
+  highlight,
+  now,
+}: {
+  record: VisionPrescription;
+  highlight: boolean;
+  now: Date;
+}) {
+  const theme = useTheme();
+  const colors = pillColorsForKind('VISION', theme);
+  const expired = isVisionExpired(record, now);
+  const by = record.doctorName ? `Prescribed by ${record.doctorName}` : '';
+
+  return (
+    <HighlightFrame active={highlight}>
+      <Card variant="portal" accentColor={accentForKind('VISION', theme)} style={styles.card}>
+        <CardHeader
+          icon={iconForKind('VISION')}
+          bubbleBg={colors.bg}
+          bubbleFg={colors.fg}
+          title="Glasses prescription"
+          meta={<MetaLine parts={[by, record.issuedAt ? `Issued ${formatDate(record.issuedAt)}` : '']} />}
+          trailing={
+            highlight || expired ? (
+              <View style={styles.badgeStack}>
+                {highlight ? <NewBadge /> : null}
+                {expired ? <Badge size="md" label="Expired" icon="time" bg={theme.pillMarigoldBg} fg={theme.pillMarigoldText} /> : null}
+              </View>
+            ) : null
+          }
+        />
+
+        <VisionTable rx={record} />
+
+        <View style={styles.facts}>
+          {typeof record.pupillaryDistanceMm === 'number' ? (
+            <Fact label="Pupillary distance" value={formatPupillaryDistance(record.pupillaryDistanceMm)} />
+          ) : null}
+          {record.expiresAt ? <Fact label="Valid until" value={formatDate(record.expiresAt)} /> : null}
+        </View>
+
+        {record.notes?.trim() ? <ExpandableText text={record.notes} label="notes for glasses prescription" /> : null}
       </Card>
     </HighlightFrame>
   );
