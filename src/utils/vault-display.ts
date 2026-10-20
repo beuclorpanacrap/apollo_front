@@ -13,13 +13,14 @@ type IconName = ComponentProps<typeof Ionicons>['name'];
 type ColorTheme = { [K in keyof typeof Colors.light]: string };
 
 export type VaultEntryKind = 'CONDITION' | 'PRESCRIPTION' | 'LAB_RESULT' | 'VISION';
-export type VaultEntrySource = 'PATIENT_DECLARED' | 'DOCTOR_VERIFIED' | 'CLINICIAN_ENTERED' | 'PATIENT_LOCAL';
+export type VaultEntrySource = 'PATIENT_DECLARED' | 'DOCTOR_VERIFIED' | 'CLINICIAN_ENTERED' | 'PATIENT_LOCAL' | 'PATIENT_REPORTED';
 
 export interface VaultDisplayEntry {
   id: string;
   kind: VaultEntryKind;
   title: string;
   subtitle?: string;
+  authorLabel?: string;
   dateLabel: string;
   /** Raw sortable date string (yyyy-mm-dd or ISO datetime); newest first. */
   sortKey: string;
@@ -60,6 +61,8 @@ export function sourceLabel(source: VaultEntrySource): string {
       return 'Clinician entered';
     case 'PATIENT_LOCAL':
       return 'Logged by you';
+    case 'PATIENT_REPORTED':
+      return 'Patient-reported';
     case 'PATIENT_DECLARED':
     default:
       return 'Self-reported';
@@ -72,6 +75,7 @@ export function sourceBadgeColors(source: VaultEntrySource, theme: ColorTheme): 
     case 'CLINICIAN_ENTERED':
       return { bg: theme.pillGreenBg, fg: theme.pillGreenText };
     case 'PATIENT_LOCAL':
+    case 'PATIENT_REPORTED':
       return { bg: theme.pillPeachBg, fg: theme.pillPeachText };
     case 'PATIENT_DECLARED':
     default:
@@ -85,6 +89,7 @@ export function sourceIcon(source: VaultEntrySource): IconName {
     case 'CLINICIAN_ENTERED':
       return 'shield-checkmark';
     case 'PATIENT_LOCAL':
+    case 'PATIENT_REPORTED':
       return 'person';
     default:
       return 'person-outline';
@@ -211,53 +216,64 @@ export function conditionToDisplayEntry(
 }
 
 export function prescriptionToDisplayEntry(p: PrescriptionResponse): VaultDisplayEntry {
+  const isPatient = p.source === 'PATIENT_DECLARED' || !p.doctorId;
   const id = p.id ?? `rx-${p.medicationName ?? ''}-${p.issuedAt ?? ''}`;
+  const subtitle = [p.dosage, p.frequency].filter(Boolean).join(' · ') || 'No dosage specified';
+  const authorLabel = isPatient ? 'Logged by you' : p.doctorName || 'Doctor';
   return {
     id,
     kind: 'PRESCRIPTION',
     title: p.medicationName ?? 'Prescription',
-    subtitle: [p.dosage, p.instructions].filter(Boolean).join(' · ') || undefined,
+    subtitle,
+    authorLabel,
     dateLabel: formatDateLabel(p.issuedAt),
     sortKey: p.issuedAt ?? '',
-    source: 'DOCTOR_VERIFIED',
-    isLocal: false,
-    isEditable: false,
+    source: isPatient ? 'PATIENT_DECLARED' : 'DOCTOR_VERIFIED',
+    isLocal: isPatient,
+    isEditable: isPatient,
     prescriptionStatus: p.status ?? 'ACTIVE',
     viewHref: { pathname: '/vault/view-prescription', params: { id } },
   };
 }
 
 export function labResultToDisplayEntry(r: LabTestResultResponse): VaultDisplayEntry {
+  const isPatient = r.source === 'PATIENT_REPORTED' || !r.doctorId;
   const id = r.id ?? `lab-${r.testName ?? ''}-${r.recordedAt ?? ''}`;
+  const authorLabel = isPatient ? 'Logged by you' : r.doctorName || 'Doctor';
+  const formattedVal =
+    r.numericValue != null
+      ? `${r.numericValue} ${r.unit ?? ''}`.trim()
+      : r.valueText ?? '';
   return {
     id,
     kind: 'LAB_RESULT',
     title: r.testName ?? 'Lab result',
-    subtitle:
-      [r.numericValue != null ? `${r.numericValue} ${r.unit ?? ''}`.trim() : undefined, r.doctorName]
-        .filter(Boolean)
-        .join(' · ') || undefined,
+    subtitle: [formattedVal || undefined, isPatient ? undefined : r.doctorName].filter(Boolean).join(' · ') || undefined,
+    authorLabel,
     dateLabel: formatDateLabel(r.recordedAt),
     sortKey: r.recordedAt ?? '',
-    source: 'DOCTOR_VERIFIED',
-    isLocal: false,
-    isEditable: false,
+    source: isPatient ? 'PATIENT_REPORTED' : 'DOCTOR_VERIFIED',
+    isLocal: isPatient,
+    isEditable: isPatient,
     viewHref: { pathname: '/vault/view-lab-result', params: { id } },
   };
 }
 
-/** A doctor-entered template result (several values recorded together) as one entry. */
+/** A doctor-entered or patient-reported template result as one entry. */
 export function labGroupToDisplayEntry(group: RemoteLabGroup): VaultDisplayEntry {
+  const isPatient = group.source === 'PATIENT_REPORTED';
+  const authorLabel = isPatient ? 'Logged by you' : group.doctorName || 'Doctor';
   return {
     id: group.id,
     kind: 'LAB_RESULT',
     title: group.template.name,
-    subtitle: [summarizePanel(group.entries), group.doctorName].filter(Boolean).join(' · '),
+    subtitle: [summarizePanel(group.entries), isPatient ? undefined : group.doctorName].filter(Boolean).join(' · ') || undefined,
+    authorLabel,
     dateLabel: formatDateLabel(group.recordedAt),
     sortKey: group.recordedAt,
-    source: 'DOCTOR_VERIFIED',
-    isLocal: false,
-    isEditable: false,
+    source: isPatient ? 'PATIENT_REPORTED' : 'DOCTOR_VERIFIED',
+    isLocal: isPatient,
+    isEditable: isPatient,
     viewHref: { pathname: '/vault/view-lab-result', params: { id: group.id } },
   };
 }

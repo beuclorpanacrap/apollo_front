@@ -33,7 +33,7 @@ export default function AddPrescriptionScreen() {
   const styles = useMemo(() => createStyles(theme), [theme]);
   const router = useRouter();
   const { editId } = useLocalSearchParams<{ editId?: string }>();
-  const { getLocalPrescriptionById, addPrescription, editPrescription } = useVault();
+  const { getLocalPrescriptionById, prescriptions, addPrescription, editPrescription } = useVault();
   const isEditing = !!editId;
 
   const [medicationName, setMedicationName] = useState('');
@@ -45,15 +45,24 @@ export default function AddPrescriptionScreen() {
 
   useEffect(() => {
     if (!editId) return;
-    const existing = getLocalPrescriptionById(editId);
-    if (!existing) return;
-    setMedicationName(existing.medicationName);
-    setDosage(existing.dosage ?? '');
-    setFrequency(existing.frequency ?? '');
-    setInstructions(existing.instructions ?? '');
-    setDateAdded(existing.dateAdded);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editId]);
+    const localExisting = getLocalPrescriptionById(editId);
+    if (localExisting) {
+      setMedicationName(localExisting.medicationName);
+      setDosage(localExisting.dosage ?? '');
+      setFrequency(localExisting.frequency ?? '');
+      setInstructions(localExisting.instructions ?? '');
+      setDateAdded(localExisting.dateAdded);
+      return;
+    }
+    const remoteExisting = prescriptions.find((p) => p.id === editId);
+    if (remoteExisting) {
+      setMedicationName(remoteExisting.medicationName ?? '');
+      setDosage(remoteExisting.dosage ?? '');
+      setFrequency((remoteExisting as any).frequency ?? '');
+      setInstructions(remoteExisting.instructions ?? '');
+      setDateAdded(remoteExisting.issuedAt ? remoteExisting.issuedAt.slice(0, 10) : todayIso());
+    }
+  }, [editId, getLocalPrescriptionById, prescriptions]);
 
   const canSave = medicationName.trim().length > 0;
 

@@ -44,5 +44,5 @@ export default function DoctorLabResultScreen() {
     }
   }
 
-  return <NewLabResultScreen patient={patientContext(vault.patient ?? {})} onSave={save} />;
+  return <NewLabResultScreen mode="doctor" patient={patientContext(vault.patient ?? {})} onSave={save} />;
 }

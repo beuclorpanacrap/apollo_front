@@ -1,20 +1,32 @@
 /**
  * The backend stores one numeric value per lab record. When a doctor enters a
- * template (e.g. a complete blood count) the app sends one record per value,
- * all with the same doctor and the same `recordedAt`. This puts such records
- * back together so the patient sees one result, like one they entered themselves.
+ * template (e.g. a complete blood count) or a patient reports a panel, the app
+ * groups records back together by panelId or doctor/recordedAt so the user sees one result.
  *
  * Pure TypeScript with relative imports only, so it runs under Jest as-is.
  */
 
-import { flagFor, formatRange, pickRange } from '../components/evaluate';
-import { TEMPLATES } from '../components/templates';
-import type { LabTemplate, NumberField, PatientContext, ResultEntry } from '../components/types';
+import { allFields, flagFor, formatRange, pickRange } from '../components/evaluate';
+import { getTemplate, TEMPLATES } from '../components/templates';
+import type { Flag, LabTemplate, NumberField, PatientContext, ResultEntry } from '../components/types';
 import type { RemoteLabResult } from './lab-trends';
 
 export interface RemoteLab extends RemoteLabResult {
-  doctorId?: string;
-  doctorName?: string;
+  doctorId?: string | null;
+  doctorName?: string | null;
+  source?: 'DOCTOR_VERIFIED' | 'PATIENT_REPORTED' | 'CLINICIAN_ENTERED';
+  panelId?: string | null;
+  panelName?: string | null;
+  templateCode?: string | null;
+  templateVersion?: number | null;
+  key?: string | null;
+  entryKey?: string | null;
+  valueText?: string | null;
+  qualifier?: '<' | '>' | 'EXACT' | 'BELOW_LIMIT' | 'ABOVE_LIMIT' | null;
+  flag?: "LOW" | "HIGH" | "NORMAL" | "CRITICAL_LOW" | "CRITICAL_HIGH" | "ABNORMAL" | null;
+  referenceLow?: number | null;
+  referenceHigh?: number | null;
+  comment?: string | null;
 }
 
 export interface RemoteLabGroup {
@@ -25,6 +37,7 @@ export interface RemoteLabGroup {
   /** ISO datetime shared by the grouped records. */
   recordedAt: string;
   doctorName?: string;
+  source: 'DOCTOR_VERIFIED' | 'PATIENT_REPORTED';
   recordIds: string[];
 }
 
@@ -64,31 +77,59 @@ export function groupRemoteLabs(
   const singles: RemoteLab[] = [];
 
   for (const r of results) {
-    if (!r.id || !r.testName || r.numericValue == null || !r.recordedAt) {
+    const recKey = r.key ?? r.entryKey;
+    if (!r.id || (!r.testName && !recKey) || !r.recordedAt) {
       singles.push(r);
       continue;
     }
-    const key = `${r.doctorId ?? ''}|${r.recordedAt}`;
+    const key = r.panelId ? `panel:${r.panelId}` : `${r.doctorId ?? 'self'}|${r.recordedAt}`;
     batches.set(key, [...(batches.get(key) ?? []), r]);
   }
 
   const groups: RemoteLabGroup[] = [];
 
   for (const batch of batches.values()) {
-    // Pick the template whose value names match the most records in the batch.
-    let best: { template: LabTemplate; matches: Map<string, { field: NumberField; record: RemoteLab }> } | undefined;
-    for (const template of TEMPLATES) {
-      const byLabel = new Map(numberFields(template).map((f) => [norm(f.label), f] as const));
-      const matches = new Map<string, { field: NumberField; record: RemoteLab }>();
+    const isPatientReported = batch.every((m) => m.source === 'PATIENT_REPORTED' || !m.doctorId);
+    const source: 'DOCTOR_VERIFIED' | 'PATIENT_REPORTED' = isPatientReported ? 'PATIENT_REPORTED' : 'DOCTOR_VERIFIED';
+
+    // 1. Try matching template by templateCode first
+    const firstWithCode = batch.find((r) => r.templateCode);
+    let matchedTemplate: LabTemplate | undefined = firstWithCode?.templateCode
+      ? getTemplate(firstWithCode.templateCode, firstWithCode.templateVersion ?? undefined)
+      : undefined;
+
+    // 2. Fallback to matching template by field labels
+    let best: { template: LabTemplate; matches: Map<string, { field: any; record: RemoteLab }> } | undefined;
+    if (matchedTemplate) {
+      const allF = allFields(matchedTemplate);
+      const matches = new Map<string, { field: any; record: RemoteLab }>();
       for (const record of batch) {
-        const field = byLabel.get(norm(record.testName!));
-        if (field && !matches.has(field.key)) matches.set(field.key, { field, record });
+        const recKey = record.key ?? record.entryKey;
+        let field = recKey ? allF.find((f) => f.key === recKey) : undefined;
+        if (!field && record.testName) {
+          field = allF.find((f) => norm(f.label) === norm(record.testName!));
+        }
+        if (field && !matches.has(field.key)) {
+          matches.set(field.key, { field, record });
+        }
       }
-      if (matches.size > (best?.matches.size ?? 0)) best = { template, matches };
+      best = { template: matchedTemplate, matches };
+    } else {
+      for (const template of TEMPLATES) {
+        const byLabel = new Map(numberFields(template).map((f) => [norm(f.label), f] as const));
+        const matches = new Map<string, { field: any; record: RemoteLab }>();
+        for (const record of batch) {
+          if (!record.testName) continue;
+          const field = byLabel.get(norm(record.testName));
+          if (field && !matches.has(field.key)) matches.set(field.key, { field, record });
+        }
+        if (matches.size > (best?.matches.size ?? 0)) best = { template, matches };
+      }
     }
 
-    // A lone value is just a result, not a panel.
-    if (!best || best.matches.size < 2) {
+    // A lone value without panelId is just a single result, not a panel.
+    const hasExplicitPanel = batch.some((r) => r.panelId || r.templateCode);
+    if (!best || (!hasExplicitPanel && best.matches.size < 2)) {
       singles.push(...batch);
       continue;
     }
@@ -98,23 +139,66 @@ export function groupRemoteLabs(
 
     const entries: ResultEntry[] = [];
     for (const { field, record } of best.matches.values()) {
-      const range = pickRange(field, patient);
-      entries.push({
+      const isNum = field && field.type === 'number';
+      const range = isNum ? pickRange(field as NumberField, patient) : undefined;
+
+      let val: number | string = '';
+      let qualifier: '<' | '>' | undefined = undefined;
+      if (record.valueText) {
+        val = record.valueText;
+      } else if ((record.qualifier === '<' || record.qualifier === 'BELOW_LIMIT') && record.numericValue != null) {
+        val = record.numericValue;
+        qualifier = '<';
+      } else if ((record.qualifier === '>' || record.qualifier === 'ABOVE_LIMIT') && record.numericValue != null) {
+        val = record.numericValue;
+        qualifier = '>';
+      } else if (record.numericValue != null) {
+        val = record.numericValue;
+      } else {
+        val = '';
+      }
+
+      let flag: Flag | undefined = undefined;
+      if (record.flag) {
+        const f = record.flag.toLowerCase().replace('_', '-') as Flag;
+        if (['low', 'high', 'normal', 'critical-low', 'critical-high', 'abnormal'].includes(f)) {
+          flag = f;
+        }
+      }
+      if (!flag && typeof val === 'number' && !qualifier && range) {
+        flag = flagFor(val, range);
+      }
+
+      let reference: string | undefined = undefined;
+      if (range) {
+        reference = formatRange(range, (field as NumberField).decimals);
+      } else if (record.referenceLow != null || record.referenceHigh != null) {
+        reference = `${record.referenceLow ?? ''}–${record.referenceHigh ?? ''}`;
+      }
+
+      const entry: ResultEntry = {
         key: field.key,
-        value: record.numericValue!,
-        unit: record.unit || field.unit || undefined,
-        flag: flagFor(record.numericValue!, range),
-        reference: range ? formatRange(range, field.decimals) : undefined,
-      });
+        value: val,
+        qualifier,
+        unit: record.unit || (field && 'unit' in field ? (field as NumberField).unit : undefined) || undefined,
+        flag,
+        reference,
+      };
+      if (field.type === 'measurement' && record.testName) {
+        entry.label = record.testName;
+      }
+      entries.push(entry);
     }
 
     const records = [...used];
+    const firstRec = records[0]!;
     groups.push({
-      id: `group:${records[0]!.id}`,
+      id: `group:${firstRec.id}`,
       template: best.template,
       entries,
-      recordedAt: records[0]!.recordedAt!,
-      doctorName: records.find((r) => r.doctorName)?.doctorName,
+      recordedAt: firstRec.recordedAt!,
+      doctorName: records.find((r) => r.doctorName)?.doctorName ?? undefined,
+      source,
       recordIds: records.map((r) => r.id!),
     });
   }

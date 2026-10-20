@@ -58,6 +58,7 @@ export default function ViewLabResultScreen() {
     () => (!local && !group ? testResults.find((l) => l.id === id) : undefined),
     [local, group, testResults, id]
   );
+  const isPatientReported = !!local || group?.source === 'PATIENT_REPORTED' || remote?.source === 'PATIENT_REPORTED' || (!group?.doctorName && !remote?.doctorId);
 
   const panelInfo = useMemo(() => {
     if (local) return getLabPanel(local);
@@ -86,17 +87,17 @@ export default function ViewLabResultScreen() {
           referenceRange: undefined as string | undefined,
           freeformResult: undefined as string | undefined,
           date: group.recordedAt,
-          doctorName: group.doctorName,
+          doctorName: isPatientReported ? undefined : group.doctorName,
         }
     : remote
       ? {
           name: remote.testName,
-          numericValue: remote.numericValue,
-          unit: remote.unit,
-          referenceRange: undefined as string | undefined,
-          freeformResult: undefined as string | undefined,
+          numericValue: remote.numericValue ?? undefined,
+          unit: remote.unit ?? undefined,
+          referenceRange: (remote.referenceLow != null || remote.referenceHigh != null) ? `${remote.referenceLow ?? ''}–${remote.referenceHigh ?? ''}` : undefined,
+          freeformResult: remote.valueText ?? undefined,
           date: remote.recordedAt,
-          doctorName: remote.doctorName,
+          doctorName: isPatientReported ? undefined : remote.doctorName,
         }
       : undefined;
 
@@ -172,10 +173,10 @@ export default function ViewLabResultScreen() {
           ) : null}
 
           <Badge
-            label={local ? 'Logged by you' : 'Doctor verified'}
-            bg={local ? theme.pillPeachBg : theme.pillGreenBg}
-            fg={local ? theme.pillPeachText : theme.pillGreenText}
-            icon={local ? 'person' : 'shield-checkmark'}
+            label={isPatientReported ? 'Logged by you' : (record.doctorName ? `Dr. ${record.doctorName.replace(/^Dr\.\s*/i, '')}` : 'Doctor verified')}
+            bg={isPatientReported ? theme.pillPeachBg : theme.pillGreenBg}
+            fg={isPatientReported ? theme.pillPeachText : theme.pillGreenText}
+            icon={isPatientReported ? 'person' : 'shield-checkmark'}
           />
         </View>
 
@@ -203,7 +204,7 @@ export default function ViewLabResultScreen() {
             </View>
           ) : null}
 
-          {local ? (
+          {isPatientReported ? (
             <View style={styles.actionsRow}>
               <View style={{ flex: 1 }}>
                 <Button label="Delete" variant="danger" icon="trash-outline" onPress={handleDelete} fullWidth />

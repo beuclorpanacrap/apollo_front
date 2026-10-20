@@ -27,5 +27,5 @@ export default function AddLabResultScreen() {
     });
   }
 
-  return <NewLabResultScreen patient={patientContext(user ?? {})} onSave={save} />;
+  return <NewLabResultScreen mode="patient" patient={patientContext(user ?? {})} onSave={save} />;
 }

@@ -23,6 +23,7 @@ export default function ViewPrescriptionScreen() {
 
   const local = useMemo(() => localPrescriptions.find((p) => p.id === id), [localPrescriptions, id]);
   const remote = useMemo(() => (!local ? prescriptions.find((p) => p.id === id) : undefined), [local, prescriptions, id]);
+  const isPatientDeclared = !!local || remote?.source === 'PATIENT_DECLARED' || !remote?.doctorId;
 
   const record = local
     ? {
@@ -32,15 +33,17 @@ export default function ViewPrescriptionScreen() {
         instructions: local.instructions,
         date: local.dateAdded,
         status: local.status ?? 'ACTIVE',
+        doctorName: undefined as string | undefined,
       }
     : remote
       ? {
           name: remote.medicationName,
           dosage: remote.dosage,
-          frequency: undefined as string | undefined,
+          frequency: (remote as any).frequency ?? undefined,
           instructions: remote.instructions,
           date: remote.issuedAt,
           status: remote.status ?? 'ACTIVE',
+          doctorName: isPatientDeclared ? undefined : remote.doctorName,
         }
       : undefined;
 
@@ -94,10 +97,10 @@ export default function ViewPrescriptionScreen() {
           <IconBubble icon="medical" bg={BrandColors.marigold} fg="#FFFFFF" size={64} />
           <Text style={styles.heroTitle}>{record.name}</Text>
           <Badge
-            label={local ? 'Logged by you' : 'Doctor verified'}
-            bg={local ? theme.pillPeachBg : theme.pillGreenBg}
-            fg={local ? theme.pillPeachText : theme.pillGreenText}
-            icon={local ? 'person' : 'shield-checkmark'}
+            label={isPatientDeclared ? 'Logged by you' : (record.doctorName ? `Dr. ${record.doctorName.replace(/^Dr\.\s*/i, '')}` : 'Doctor verified')}
+            bg={isPatientDeclared ? theme.pillPeachBg : theme.pillGreenBg}
+            fg={isPatientDeclared ? theme.pillPeachText : theme.pillGreenText}
+            icon={isPatientDeclared ? 'person' : 'shield-checkmark'}
           />
           {record.status === 'FULFILLED' || record.status === 'CANCELLED' ? (
             <Badge
@@ -146,7 +149,7 @@ export default function ViewPrescriptionScreen() {
             {formatDateLabel(record.date)}
           </DetailRow>
 
-          {local ? (
+          {isPatientDeclared ? (
             <View style={styles.actionsRow}>
               <View style={{ flex: 1 }}>
                 <Button label="Edit" variant="secondary" icon="create-outline" onPress={handleEdit} fullWidth />

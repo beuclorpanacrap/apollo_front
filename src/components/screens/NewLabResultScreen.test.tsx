@@ -218,4 +218,10 @@ describe('NewLabResultScreen', () => {
     expect(screen.queryByLabelText('FSH reference')).toBeNull();
     expect(screen.getByLabelText('DHEA-S reference')).toBeTruthy(); // no range for anyone
   });
+
+  it('hides the Save draft button when mode is patient', async () => {
+    await render(<NewLabResultScreen mode="patient" />);
+    expect(screen.queryByText('Save draft')).toBeNull();
+    expect(screen.getByText('Finalize result')).toBeTruthy();
+  });
 });

@@ -5,12 +5,16 @@ import {
   type ClinicalEncounterSummaryDto,
   type CreateHealthConditionRequest,
   type HealthConditionResponse,
+  type LabResultValueRequest,
   type LabTestResultResponse,
   type PrescriptionResponse,
 } from '@/api/vault.api';
+import { getTemplate } from '@/components/templates';
+import { allFields, parseReference } from '@/components/evaluate';
 import { visionApi, type VisionPrescriptionResponse } from '@/api/vision.api';
 import { useAuth } from '@/context/auth-context';
 import { patientContext } from '@/utils/patient-context';
+import { recordedAtFor } from '@/utils/recorded-at';
 import { groupRemoteLabs, type RemoteLabGroup } from '@/utils/remote-panels';
 import type {
   LocalLabResult,
@@ -171,32 +175,96 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
     setLocalLabResults(await getLocalLabResults());
   }, []);
 
+  const { remoteLabGroups, ungroupedTestResults } = useMemo(() => {
+    const { groups, singles } = groupRemoteLabs(testResults, patientContext(user ?? {}));
+    return { remoteLabGroups: groups, ungroupedTestResults: singles as LabTestResultResponse[] };
+  }, [testResults, user]);
+
   const addPrescription = useCallback(
     async (draft: LocalPrescriptionDraft) => {
-      const item = await createLocalPrescription(draft);
-      await refreshLocalPrescriptions();
-      return item;
+      const issuedAt = draft.dateAdded
+        ? (draft.dateAdded.includes('T') ? draft.dateAdded : recordedAtFor(draft.dateAdded))
+        : new Date().toISOString();
+      const created = await vaultApi.addPrescription({
+        medicationName: draft.medicationName,
+        dosage: draft.dosage,
+        frequency: draft.frequency,
+        instructions: draft.instructions,
+        issuedAt,
+      });
+      setPrescriptions((prev) => [created, ...prev]);
+      const now = new Date().toISOString();
+      return {
+        id: created.id!,
+        medicationName: created.medicationName ?? draft.medicationName,
+        dosage: created.dosage ?? draft.dosage,
+        frequency: (created as any).frequency ?? draft.frequency,
+        instructions: created.instructions ?? draft.instructions,
+        dateAdded: draft.dateAdded,
+        status: (created.status as any) ?? 'ACTIVE',
+        source: 'PATIENT_LOCAL' as const,
+        createdAt: created.issuedAt ?? now,
+        updatedAt: created.issuedAt ?? now,
+      };
     },
-    [refreshLocalPrescriptions]
+    []
   );
+
   const editPrescription = useCallback(
     async (id: string, draft: LocalPrescriptionDraft) => {
-      const item = await updateLocalPrescription(id, draft);
-      await refreshLocalPrescriptions();
-      return item;
+      if (id.startsWith('local_') || id.startsWith('rx_')) {
+        const item = await updateLocalPrescription(id, draft);
+        await refreshLocalPrescriptions();
+        return item;
+      }
+      const issuedAt = draft.dateAdded
+        ? (draft.dateAdded.includes('T') ? draft.dateAdded : recordedAtFor(draft.dateAdded))
+        : undefined;
+      const updated = await vaultApi.updatePrescription(id, {
+        medicationName: draft.medicationName,
+        dosage: draft.dosage,
+        frequency: draft.frequency,
+        instructions: draft.instructions,
+        issuedAt,
+      });
+      if ((draft as any).status) {
+        await vaultApi.updatePrescriptionStatus(id, (draft as any).status);
+        updated.status = (draft as any).status;
+      }
+      setPrescriptions((prev) => prev.map((p) => (p.id === id ? updated : p)));
+      const now = new Date().toISOString();
+      return {
+        id: updated.id!,
+        medicationName: updated.medicationName ?? draft.medicationName,
+        dosage: updated.dosage ?? draft.dosage,
+        frequency: (updated as any).frequency ?? draft.frequency,
+        instructions: updated.instructions ?? draft.instructions,
+        dateAdded: draft.dateAdded,
+        status: (updated.status as any) ?? 'ACTIVE',
+        source: 'PATIENT_LOCAL' as const,
+        createdAt: updated.issuedAt ?? now,
+        updatedAt: now,
+      };
     },
     [refreshLocalPrescriptions]
   );
+
   const removePrescription = useCallback(
     async (id: string) => {
-      await deleteLocalPrescription(id);
-      await refreshLocalPrescriptions();
+      if (id.startsWith('local_') || id.startsWith('rx_')) {
+        await deleteLocalPrescription(id);
+        await refreshLocalPrescriptions();
+        return;
+      }
+      await vaultApi.deletePrescription(id);
+      setPrescriptions((prev) => prev.filter((p) => p.id !== id));
     },
     [refreshLocalPrescriptions]
   );
+
   const setPrescriptionStatus = useCallback(
     async (id: string, isLocal: boolean, status: 'ACTIVE' | 'FULFILLED') => {
-      if (isLocal) {
+      if (isLocal || id.startsWith('local_') || id.startsWith('rx_')) {
         await updateLocalPrescriptionStatus(id, status);
         await refreshLocalPrescriptions();
         return;
@@ -209,26 +277,146 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
 
   const addLabResult = useCallback(
     async (draft: LocalLabResultDraft) => {
-      const item = await createLocalLabResult(draft);
-      await refreshLocalLabResults();
-      return item;
+      const recordedAt = draft.dateAdded
+        ? (draft.dateAdded.includes('T') ? draft.dateAdded : recordedAtFor(draft.dateAdded))
+        : new Date().toISOString();
+
+      const template = draft.panel?.templateCode ? getTemplate(draft.panel.templateCode, draft.panel.templateVersion) : undefined;
+      const allF = template ? allFields(template) : [];
+
+      let entries: LabResultValueRequest[] = [];
+      if (draft.panel?.entries && draft.panel.entries.length > 0) {
+        entries = draft.panel.entries.map((entry) => {
+          const field = allF.find((f) => f.key === entry.key);
+          const rawVal = entry.value;
+          let valueText: string | undefined = undefined;
+          let numericValue: number | undefined = undefined;
+          let qualifier: '<' | '>' | undefined = undefined;
+
+          if (field?.type === 'text') {
+            valueText = String(rawVal ?? '').trim();
+          } else if (typeof rawVal === 'string' && rawVal.trim().startsWith('<')) {
+            qualifier = '<';
+            const num = parseFloat(rawVal.trim().slice(1));
+            numericValue = Number.isNaN(num) ? undefined : num;
+          } else if (typeof rawVal === 'string' && rawVal.trim().startsWith('>')) {
+            qualifier = '>';
+            const num = parseFloat(rawVal.trim().slice(1));
+            numericValue = Number.isNaN(num) ? undefined : num;
+          } else if (entry.qualifier === '<') {
+            qualifier = '<';
+            numericValue = typeof rawVal === 'number' ? rawVal : parseFloat(String(rawVal));
+          } else if (entry.qualifier === '>') {
+            qualifier = '>';
+            numericValue = typeof rawVal === 'number' ? rawVal : parseFloat(String(rawVal));
+          } else if (typeof rawVal === 'number') {
+            numericValue = rawVal;
+            qualifier = undefined;
+          } else if (typeof rawVal === 'string' && rawVal.trim() !== '') {
+            const num = parseFloat(rawVal);
+            if (!Number.isNaN(num)) {
+              numericValue = num;
+              qualifier = undefined;
+            } else {
+              valueText = rawVal.trim();
+            }
+          }
+
+          let flag: 'LOW' | 'HIGH' | 'NORMAL' | 'CRITICAL_LOW' | 'CRITICAL_HIGH' | 'ABNORMAL' | null = null;
+          if (entry.flag === 'low') flag = 'LOW';
+          else if (entry.flag === 'high') flag = 'HIGH';
+          else if (entry.flag === 'normal') flag = 'NORMAL';
+          else if (entry.flag === 'critical-low') flag = 'CRITICAL_LOW';
+          else if (entry.flag === 'critical-high') flag = 'CRITICAL_HIGH';
+          else if (entry.flag === 'abnormal') flag = 'ABNORMAL';
+
+          const parsedRef = entry.reference ? parseReference(entry.reference) : undefined;
+          const refLow = parsedRef?.min ?? undefined;
+          const refHigh = parsedRef?.max ?? undefined;
+
+          return {
+            key: entry.key,
+            testName: entry.label || field?.label || entry.key,
+            numericValue,
+            valueText,
+            qualifier,
+            unit: entry.unit || (field && 'unit' in field ? (field as any).unit : '') || '',
+            referenceLow: refLow,
+            referenceHigh: refHigh,
+            referenceText: entry.reference,
+            flag,
+          };
+        }).filter((e) => e.numericValue != null || (e.valueText && e.valueText.length > 0));
+      } else {
+        const parsedRef = draft.referenceRange ? parseReference(draft.referenceRange) : undefined;
+        entries = [
+          {
+            testName: draft.testName,
+            numericValue: draft.numericValue,
+            unit: draft.unit,
+            valueText: draft.freeformResult,
+            referenceLow: parsedRef?.min,
+            referenceHigh: parsedRef?.max,
+            referenceText: draft.referenceRange,
+          },
+        ];
+      }
+
+      const created = await vaultApi.addTestResults({
+        templateCode: draft.panel?.templateCode,
+        templateVersion: draft.panel?.templateVersion,
+        panelName: template?.name ?? draft.testName,
+        status: 'FINAL',
+        recordedAt,
+        diagnosticNotes: draft.freeformResult,
+        entries,
+      });
+
+      setTestResults((prev) => [...created, ...prev]);
+
+      const now = new Date().toISOString();
+      return {
+        ...draft,
+        id: created[0]?.id ?? `lab_${Date.now()}`,
+        source: 'PATIENT_LOCAL' as const,
+        createdAt: now,
+        updatedAt: now,
+      };
     },
-    [refreshLocalLabResults]
+    []
   );
-  const editLabResult = useCallback(
-    async (id: string, draft: LocalLabResultDraft) => {
-      const item = await updateLocalLabResult(id, draft);
-      await refreshLocalLabResults();
-      return item;
-    },
-    [refreshLocalLabResults]
-  );
+
   const removeLabResult = useCallback(
     async (id: string) => {
-      await deleteLocalLabResult(id);
-      await refreshLocalLabResults();
+      if (id.startsWith('local_') || id.startsWith('lab_')) {
+        await deleteLocalLabResult(id);
+        await refreshLocalLabResults();
+        return;
+      }
+      const group = remoteLabGroups.find((g) => g.id === id);
+      if (group) {
+        await Promise.all(group.recordIds.map((rid) => vaultApi.deleteTestResult(rid)));
+        setTestResults((prev) => prev.filter((r) => !group.recordIds.includes(r.id!)));
+        return;
+      }
+      await vaultApi.deleteTestResult(id);
+      setTestResults((prev) => prev.filter((r) => r.id !== id));
     },
-    [refreshLocalLabResults]
+    [refreshLocalLabResults, remoteLabGroups]
+  );
+
+  const editLabResult = useCallback(
+    async (id: string, draft: LocalLabResultDraft) => {
+      if (id.startsWith('local_') || id.startsWith('lab_')) {
+        const item = await updateLocalLabResult(id, draft);
+        await refreshLocalLabResults();
+        return item;
+      }
+      const item = await addLabResult(draft);
+      await removeLabResult(id);
+      return item;
+    },
+    [refreshLocalLabResults, addLabResult, removeLabResult]
   );
 
   const addCondition = useCallback(async (input: CreateHealthConditionRequest) => {
@@ -283,11 +471,6 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
     () => sortByDateDesc(visionPrescriptions.map(visionToDisplayEntry)),
     [visionPrescriptions]
   );
-
-  const { remoteLabGroups, ungroupedTestResults } = useMemo(() => {
-    const { groups, singles } = groupRemoteLabs(testResults, patientContext(user ?? {}));
-    return { remoteLabGroups: groups, ungroupedTestResults: singles as LabTestResultResponse[] };
-  }, [testResults, user]);
 
   const labResultEntries = useMemo(
     () =>

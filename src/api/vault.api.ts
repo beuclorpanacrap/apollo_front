@@ -15,6 +15,20 @@ export type PatientVaultTimelineResponse = components['schemas']['PatientVaultTi
 // not ClinicalEncounterResponse (a separate, fuller schema used elsewhere) —
 // see LOCAL_BRIDGE_NOTES.md.
 export type ClinicalEncounterSummaryDto = components['schemas']['ClinicalEncounterSummaryDto'];
+import type {
+  PatientPrescriptionRequest,
+  LabResultValueRequest,
+  CreateLabTestPanelRequest,
+  LabTestPanelResponse,
+  SourceType,
+} from './types';
+export type {
+  PatientPrescriptionRequest,
+  LabResultValueRequest,
+  CreateLabTestPanelRequest,
+  LabTestPanelResponse,
+  SourceType,
+};
 
 export const vaultApi = {
   /**
@@ -55,7 +69,7 @@ export const vaultApi = {
     });
   },
 
-  /** Marks a patient-owned prescription as fulfilled. */
+  /** Marks a patient-owned prescription as fulfilled or toggles status. */
   async updatePrescriptionStatus(
     prescriptionId: string,
     status: 'ACTIVE' | 'FULFILLED' | 'CANCELLED'
@@ -66,6 +80,29 @@ export const vaultApi = {
     });
   },
 
+  /** Adds a patient-declared prescription. */
+  async addPrescription(data: PatientPrescriptionRequest): Promise<PrescriptionResponse> {
+    return apiClient<PrescriptionResponse>('/api/v1/patient/vault/prescriptions', {
+      method: 'POST',
+      body: data,
+    });
+  },
+
+  /** Updates a patient-declared prescription. */
+  async updatePrescription(prescriptionId: string, data: PatientPrescriptionRequest): Promise<PrescriptionResponse> {
+    return apiClient<PrescriptionResponse>(`/api/v1/patient/vault/prescriptions/${encodeURIComponent(prescriptionId)}`, {
+      method: 'PUT',
+      body: data,
+    });
+  },
+
+  /** Deletes a patient-declared prescription. */
+  async deletePrescription(prescriptionId: string): Promise<void> {
+    await apiClient<void>(`/api/v1/patient/vault/prescriptions/${encodeURIComponent(prescriptionId)}`, {
+      method: 'DELETE',
+    });
+  },
+
   /**
    * Retrieves time-series lab test results sorted chronologically ascending.
    */
@@ -73,6 +110,26 @@ export const vaultApi = {
     return apiClient<LabTestResultResponse[]>('/api/v1/patient/vault/test-results', {
       method: 'GET',
       params: testName ? { testName } : undefined,
+    });
+  },
+
+  /**
+   * Saves a patient-reported lab test panel atomically.
+   */
+  async addTestResults(data: CreateLabTestPanelRequest): Promise<LabTestResultResponse[]> {
+    const res = await apiClient<LabTestPanelResponse | LabTestResultResponse[]>('/api/v1/patient/vault/test-results', {
+      method: 'POST',
+      body: data,
+    });
+    return Array.isArray(res) ? res : (res.entries ?? []);
+  },
+
+  /**
+   * Deletes a patient-reported lab test result.
+   */
+  async deleteTestResult(testResultId: string): Promise<void> {
+    await apiClient<void>(`/api/v1/patient/vault/test-results/${encodeURIComponent(testResultId)}`, {
+      method: 'DELETE',
     });
   },
 

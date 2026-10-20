@@ -200,7 +200,7 @@ export function VaultView({ vault, recentIds, canLab, canVision, tab, onTabChang
     setPages({ encounters: 1, prescriptions: 1, vision: 1, labs: 1, conditions: 1, timeline: 1 });
   }, [newest]);
 
-  const includes = (haystack: (string | undefined)[], query: string) => {
+  const includes = (haystack: (string | null | undefined)[], query: string) => {
     const q = query.trim().toLowerCase();
     return !q || haystack.some((part) => part?.toLowerCase().includes(q));
   };

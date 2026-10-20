@@ -15,6 +15,7 @@ interface Props {
   /** The patient the result is for. Without it, a demo patient is used. */
   patient?: PatientContext;
   onSave?: (payload: LabResultPayload) => void | Promise<void>;
+  mode?: 'doctor' | 'patient';
 }
 
 const toIso = (d: Date) =>
@@ -45,7 +46,7 @@ const DEMO_PATIENT: PatientContext = { sex: 'female', ageYears: 34 };
 const SIDEBAR_WIDTH = 312;
 const WIDE_BREAKPOINT = 960;
 
-export default function NewLabResultScreen({ patient = DEMO_PATIENT, onSave }: Props) {
+export default function NewLabResultScreen({ patient = DEMO_PATIENT, onSave, mode = 'doctor' }: Props) {
   const c = useLabTheme();
   const router = useRouter();
   const wide = useWindowDimensions().width >= WIDE_BREAKPOINT;
@@ -237,7 +238,9 @@ export default function NewLabResultScreen({ patient = DEMO_PATIENT, onSave }: P
         />
 
         <View style={{ flexDirection: 'row', gap: Spacing.three, maxWidth: 480 }}>
-          <Button title="Save draft" variant="secondary" onPress={() => save('draft')} />
+          {mode === 'doctor' ? (
+            <Button title="Save draft" variant="secondary" onPress={() => save('draft')} />
+          ) : null}
           <Button title="Finalize result" variant="primary" onPress={() => save('final')} />
         </View>
       </ScrollView>

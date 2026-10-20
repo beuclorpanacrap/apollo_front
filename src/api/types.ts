@@ -600,12 +600,12 @@ export interface components {
              * @description Ordering clinician or technician UUID
              * @example e2eebc99-9c0b-4ef8-bb6d-6bb9bd380a66
              */
-            doctorId?: string;
+            doctorId?: string | null;
             /**
              * @description Name of the clinician or technician who recorded the test
              * @example Dr. Gregory House
              */
-            doctorName?: string;
+            doctorName?: string | null;
             /**
              * @description Name of the diagnostic test or biomarker
              * @example Fasting Blood Glucose
@@ -615,12 +615,68 @@ export interface components {
              * @description Numerical result of the test
              * @example 95.5
              */
-            numericValue?: number;
+            numericValue?: number | null;
+            /**
+             * @description Non-numeric result
+             */
+            valueText?: string | null;
+            /**
+             * @description Value qualifier (< or >)
+             */
+            qualifier?: "<" | ">" | "EXACT" | "BELOW_LIMIT" | "ABOVE_LIMIT" | null;
+            /**
+             * @description Interpretation flag
+             */
+            flag?: "LOW" | "HIGH" | "NORMAL" | "CRITICAL_LOW" | "CRITICAL_HIGH" | "ABNORMAL" | null;
             /**
              * @description Standard unit of measurement
              * @example mg/dL
              */
-            unit?: string;
+            unit?: string | null;
+            /**
+             * @description Lower bound of the reference range
+             */
+            referenceLow?: number | null;
+            /**
+             * @description Upper bound of the reference range
+             */
+            referenceHigh?: number | null;
+            /**
+             * @description Reference range text
+             */
+            referenceText?: string | null;
+            /**
+             * @description Panel UUID grouping related records
+             */
+            panelId?: string | null;
+            /**
+             * @description Name of the test panel
+             */
+            panelName?: string | null;
+            /**
+             * @description Template code
+             */
+            templateCode?: string | null;
+            /**
+             * @description Template version
+             */
+            templateVersion?: number | null;
+            /**
+             * @description Template field key
+             */
+            entryKey?: string | null;
+            /**
+             * @description Lab comment
+             */
+            comment?: string | null;
+            /**
+             * @description Status of the lab result
+             */
+            status?: "DRAFT" | "FINAL";
+            /**
+             * @description Source of the lab result
+             */
+            source?: "DOCTOR_VERIFIED" | "PATIENT_REPORTED" | "CLINICIAN_ENTERED";
             /**
              * Format: date-time
              * @description Timestamp when the specimen was recorded
@@ -697,18 +753,18 @@ export interface components {
              * @description Prescribing doctor profile UUID
              * @example d3eebc99-9c0b-4ef8-bb6d-6bb9bd380a44
              */
-            doctorId?: string;
+            doctorId?: string | null;
             /**
              * @description Prescribing doctor's full name
              * @example Dr. Gregory House
              */
-            doctorName?: string;
+            doctorName?: string | null;
             /**
              * Format: uuid
              * @description Optional linked clinical encounter UUID
              * @example b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22
              */
-            encounterId?: string;
+            encounterId?: string | null;
             /**
              * @description Name and strength of prescribed medication
              * @example Amoxicillin 500mg
@@ -718,18 +774,26 @@ export interface components {
              * @description Prescribed dosage instructions
              * @example 1
              */
-            dosage?: string;
+            dosage?: string | null;
+            /**
+             * @description Prescribed frequency instructions
+             */
+            frequency?: string | null;
             /**
              * @description Dispensing instructions and patient directions
              * @example Take with food for 7 days. Complete full course.
              */
-            instructions?: string;
+            instructions?: string | null;
             /**
              * @description Current prescription lifecycle status
              * @example ACTIVE
              * @enum {string}
              */
             status?: "ACTIVE" | "FULFILLED" | "CANCELLED";
+            /**
+             * @description Source of the prescription record
+             */
+            source?: "DOCTOR_VERIFIED" | "PATIENT_DECLARED" | "CLINICIAN_ENTERED" | "PATIENT_REPORTED";
             /**
              * Format: date-time
              * @description Timestamp when the prescription was issued
@@ -739,7 +803,7 @@ export interface components {
              * Format: date-time
              * @description Timestamp when the prescription expires
              */
-            expiresAt?: string;
+            expiresAt?: string | null;
         };
         /** @description Unlocked patient vault details returned after successful PIN verification handshake */
         UnlockedVaultResponse: {
@@ -2255,4 +2319,49 @@ export interface operations {
             };
         };
     };
+}
+
+
+export type SourceType = "DOCTOR_VERIFIED" | "PATIENT_DECLARED" | "CLINICIAN_ENTERED" | "PATIENT_REPORTED";
+
+export interface PatientPrescriptionRequest {
+  medicationName: string;
+  dosage?: string;
+  frequency?: string;
+  instructions?: string;
+  issuedAt?: string;
+}
+
+export interface LabResultValueRequest {
+  key?: string;
+  testName: string;
+  numericValue?: number | null;
+  valueText?: string | null;
+  qualifier?: '<' | '>' | null;
+  unit?: string | null;
+  referenceLow?: number | null;
+  referenceHigh?: number | null;
+  referenceText?: string | null;
+  flag?: 'LOW' | 'HIGH' | 'NORMAL' | 'CRITICAL_LOW' | 'CRITICAL_HIGH' | 'ABNORMAL' | null;
+  comment?: string | null;
+}
+
+export interface CreateLabTestPanelRequest {
+  templateCode?: string;
+  templateVersion?: number;
+  panelName?: string;
+  status?: 'DRAFT' | 'FINAL';
+  recordedAt: string;
+  diagnosticNotes?: string;
+  entries: LabResultValueRequest[];
+}
+
+export interface LabTestPanelResponse {
+  panelId?: string;
+  patientId?: string;
+  recordedAt?: string;
+  status?: 'DRAFT' | 'FINAL';
+  templateCode?: string;
+  templateVersion?: number;
+  entries?: components["schemas"]["LabTestResultResponse"][];
 }

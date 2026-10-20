@@ -30,13 +30,18 @@ export interface TrendSeries {
   range?: Pick<ReferenceRange, 'min' | 'max'>;
 }
 
-/** The slice of a doctor-entered result the graphs need (matches LabTestResultResponse). */
+/** The slice of a remote lab result the graphs need (matches LabTestResultResponse). */
 export interface RemoteLabResult {
   id?: string;
   testName?: string;
-  numericValue?: number;
-  unit?: string;
+  numericValue?: number | null;
+  valueText?: string | null;
+  unit?: string | null;
   recordedAt?: string;
+  flag?: "LOW" | "HIGH" | "NORMAL" | "CRITICAL_LOW" | "CRITICAL_HIGH" | "ABNORMAL" | null;
+  referenceLow?: number | null;
+  referenceHigh?: number | null;
+  source?: string | null;
 }
 
 export { parseReference };
@@ -140,13 +145,35 @@ export function buildTrendSeries(localLabs: LocalLabResult[], remoteLabs: Remote
     }
   }
 
+  const seenSourceIds = new Set<string>();
+  for (const lab of localLabs) {
+    if (lab.id) seenSourceIds.add(lab.id);
+  }
+
   for (const lab of remoteLabs) {
     if (!lab.testName || lab.numericValue == null) continue;
+    const sourceId = lab.id ?? `${lab.testName}-${lab.recordedAt}`;
+    if (seenSourceIds.has(sourceId)) continue;
+    seenSourceIds.add(sourceId);
+
+    let flag: Flag | undefined = undefined;
+    if (lab.flag) {
+      const f = lab.flag.toLowerCase().replace('_', '-') as Flag;
+      if (['low', 'high', 'normal', 'critical-low', 'critical-high', 'abnormal'].includes(f)) {
+        flag = f;
+      }
+    }
+
+    const range =
+      lab.referenceLow != null && lab.referenceHigh != null
+        ? { min: lab.referenceLow, max: lab.referenceHigh }
+        : undefined;
+
     add(
       lab.testName,
-      { date: toDateKey(lab.recordedAt), value: lab.numericValue, sourceId: lab.id ?? `${lab.testName}-${lab.recordedAt}` },
-      lab.unit,
-      undefined,
+      { date: toDateKey(lab.recordedAt), value: lab.numericValue, flag, sourceId },
+      lab.unit ?? undefined,
+      range,
     );
   }
 
