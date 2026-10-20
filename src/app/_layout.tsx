@@ -184,7 +184,7 @@ function ThemedNavigationRoot() {
 function BootShell() {
   const scheme = useColorScheme();
   return (
-    <View style={[styles.boot, { backgroundColor: scheme === 'dark' ? Colors.dark.background : BrandColors.cream }]}>
+    <View style={[styles.boot, { backgroundColor: BrandColors.cream }]}>
       <AppMark size={72} />
     </View>
   );
