@@ -1,13 +1,13 @@
-﻿import { useEffect, useState, type CSSProperties } from 'react';
-import { useRouter } from 'expo-router';
-import { AppMark } from './app-mark';
-import { ClinicianIcon as Icon } from './clinician-icon';
-import { useAuth } from '@/context/auth-context';
-import { useThemeContext, type ThemeMode } from '@/context/theme-context';
-import { ClinicianColors, Fonts } from '@/constants/theme';
-import { apiClient, ApiError } from '@/api/client';
+﻿import { apiClient, ApiError } from '@/api/client';
 import { clearActiveVault } from '@/api/doctor.api';
 import { components } from '@/api/types';
+import { ClinicianColors, Fonts } from '@/constants/theme';
+import { useAuth } from '@/context/auth-context';
+import { useThemeContext, type ThemeMode } from '@/context/theme-context';
+import { useRouter } from 'expo-router';
+import { useEffect, useState, type CSSProperties } from 'react';
+import { AppMark } from './app-mark';
+import { ClinicianIcon as Icon } from './clinician-icon';
 
 const roles = { GENERAL_PRACTITIONER: 'General Practitioner', SPECIALIST: 'Specialist', LAB_TECHNICIAN: 'Lab Technician', PHARMACIST: 'Pharmacist' };
 type DoctorRole = keyof typeof roles;
@@ -50,7 +50,7 @@ export function DoctorProfile() {
   const signOut = async () => { clearActiveVault(); await logout(); router.replace('/welcome'); };
   const style = { '--page': isDark ? t.background : ClinicianColors.background, '--card': t.backgroundElement, '--text': t.text, '--muted': t.textSecondary, '--line': t.border, '--green': t.tintStrong, '--pale': t.pillGreenBg, '--on-green': t.onTint, '--danger': t.danger, fontFamily: Fonts.sans.regular } as CSSProperties;
   return <div className="doctor-profile" style={style}><style>{css}</style>
-    <header className="dp-header"><div className="dp-brand"><AppMark size={34} /><strong>Apollo</strong><span>/ Clinicians</span></div><button className="dp-plain" aria-label="Toggle color theme" onClick={() => setThemeMode(isDark ? 'Light' : 'Dark')}><Icon name={isDark ? 'sunny-outline' : 'moon-outline'} /></button></header>
+    <header className="dp-header"><div className="dp-brand"><AppMark size={34} /><strong>Apollo</strong><span>/ Clinicians</span></div></header>
     <main className="dp-main"><button className="dp-plain dp-back" onClick={() => router.replace('/doctor')}><Icon name="arrow-back-outline" />Back to dashboard</button><div className="dp-eyebrow">CLINICIAN ACCOUNT</div><h1>Profile & preferences</h1><p className="dp-subtitle">Manage your professional details and workspace appearance.</p>
       <div className="dp-grid"><div><section className="dp-card"><h2><Icon name="person-outline" />Account & profile</h2>{[['Full name', user?.fullName], ['Email address', user?.email], ['License number', user?.licenseNumber]].map(([label, value]) => <div className="dp-row" key={label}><span>{label}</span><strong>{value || 'Not provided'}</strong></div>)}<p className="dp-help">Account identity and license details are read-only. Profile editing is not currently available.</p></section>
       <section className="dp-card"><h2><Icon name="medkit-outline" />Professional details</h2><form onSubmit={e => { e.preventDefault(); saveSpecialty(); }}><label htmlFor="doctor-specialty">Specialty</label><input id="doctor-specialty" value={specialty} onChange={e => setSpecialty(e.target.value)} placeholder="e.g. General medicine" maxLength={160} /><p className="dp-help">Saved in this browser only. This preference does not update your registered specialty.</p><button className="dp-primary" disabled={!user?.userId}>Save specialty preference</button></form><hr /><form onSubmit={e => { e.preventDefault(); void saveRole(); }}><label htmlFor="doctor-role">Clinical role</label><select id="doctor-role" value={role} disabled={busy} onChange={e => setRole(e.target.value as DoctorRole)}><option value="" disabled>Select a role</option>{Object.entries(roles).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select><p className="dp-help">Role switching is available through Apollo’s demo permissions service. It changes which clinical actions your account can perform.</p><button className="dp-primary" disabled={busy || !user?.profileId || !role || role === user?.doctorRole}>{busy ? 'Updating…' : 'Update clinical role'}</button></form></section><div aria-live="polite">{message && <div className="dp-message">{message}</div>}{error && <div className="dp-error" role="alert">{error}</div>}</div></div>

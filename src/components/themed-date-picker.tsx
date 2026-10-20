@@ -77,12 +77,12 @@ export function ThemedDatePicker({
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const currentYear = new Date().getFullYear();
-  const maxYear = maximumDate ? maximumDate.getFullYear() : currentYear;
-  const minYear = minimumDate ? minimumDate.getFullYear() : maxYear - 99;
+  const maxYear = maximumDate ? maximumDate.getFullYear() : currentYear + 100;
+  const minYear = minimumDate ? minimumDate.getFullYear() : currentYear - 120;
 
   const [mode, setMode] = useState<PickerMode>('years');
   const [cursor, setCursor] = useState(() => {
-    const base = value ?? new Date(2000, 0, 1);
+    const base = value ?? new Date();
     return { year: base.getFullYear(), month: base.getMonth() };
   });
   const [yearsAnchor, setYearsAnchor] = useState(() => alignYearPage(cursor.year, minYear));
@@ -90,7 +90,7 @@ export function ThemedDatePicker({
   // Reset the whole flow every time the picker opens.
   useEffect(() => {
     if (visible) {
-      const base = value ?? new Date(2000, 0, 1);
+      const base = value ?? new Date();
       const baseYear = base.getFullYear();
       setCursor({ year: baseYear, month: base.getMonth() });
       setYearsAnchor(alignYearPage(baseYear, minYear));

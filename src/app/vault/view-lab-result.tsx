@@ -10,7 +10,6 @@ import { DetailRow } from '@/components/ui/detail-row';
 import { AppTheme, BrandColors, Fonts, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useVault } from '@/context/vault-context';
-import { confirmAsync } from '@/utils/confirm';
 import { formatDateLabel } from '@/utils/vault-display';
 
 export default function ViewLabResultScreen() {
@@ -18,7 +17,7 @@ export default function ViewLabResultScreen() {
   const styles = useMemo(() => createStyles(theme), [theme]);
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { localLabResults, testResults, removeLabResult } = useVault();
+  const { localLabResults, testResults } = useVault();
 
   const local = useMemo(() => localLabResults.find((l) => l.id === id), [localLabResults, id]);
   const remote = useMemo(() => (!local ? testResults.find((l) => l.id === id) : undefined), [local, testResults, id]);
@@ -64,12 +63,7 @@ export default function ViewLabResultScreen() {
 
   const hasStat = record.numericValue != null;
   const handleEdit = () => router.push({ pathname: '/vault/add-lab-result', params: { editId: id } });
-  const handleDelete = async () => {
-    const confirmed = await confirmAsync('Delete this result?', "This can't be undone.");
-    if (!confirmed) return;
-    await removeLabResult(id);
-    router.back();
-  };
+
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -122,9 +116,6 @@ export default function ViewLabResultScreen() {
             <View style={styles.actionsRow}>
               <View style={{ flex: 1 }}>
                 <Button label="Edit" variant="secondary" icon="create-outline" onPress={handleEdit} fullWidth />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Button label="Delete" variant="danger" icon="trash-outline" onPress={handleDelete} fullWidth />
               </View>
             </View>
           ) : (

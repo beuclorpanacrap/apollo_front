@@ -40,6 +40,7 @@ function notifyUnauthorized() {
 export interface RequestOptions extends Omit<RequestInit, 'body'> {
   body?: any;
   params?: Record<string, string | number | boolean | undefined | null>;
+  timeoutMs?: number;
 }
 
 export class ApiError extends Error {
@@ -58,7 +59,7 @@ export async function apiClient<T = any>(
   endpoint: string,
   options: RequestOptions = {}
 ): Promise<T> {
-  const { body, params, headers: customHeaders, ...customOptions } = options;
+  const { body, params, headers: customHeaders, timeoutMs = 20000, signal, ...customOptions } = options;
 
   let url = endpoint.startsWith('http') ? endpoint : `${API_BASE_URL}${endpoint}`;
 
@@ -87,28 +88,40 @@ export async function apiClient<T = any>(
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const response = await fetch(url, {
-    ...customOptions,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  const controller = new AbortController();
+  const abort = () => controller.abort();
+  if (signal?.aborted) controller.abort();
+  signal?.addEventListener('abort', abort);
+  const timeout = setTimeout(abort, timeoutMs);
 
-  if (response.status === 401) {
-    // Token may be invalid or expired
-    await removeAuthToken();
-    notifyUnauthorized();
+  try {
+    const response = await fetch(url, {
+      ...customOptions,
+      signal: controller.signal,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+
+    if (response.status === 401) {
+      // Token may be invalid or expired
+      await removeAuthToken();
+      notifyUnauthorized();
+    }
+
+    const contentType = response.headers.get('content-type');
+    const isJson = contentType && contentType.includes('application/json');
+    const data = isJson ? await response.json() : await response.text();
+
+    if (!response.ok) {
+      const errorMessage =
+        (typeof data === 'object' && data !== null && (data.message || data.error)) ||
+        `Request failed with status ${response.status}`;
+      throw new ApiError(errorMessage, response.status, data);
+    }
+
+    return data as T;
+  } finally {
+    clearTimeout(timeout);
+    signal?.removeEventListener('abort', abort);
   }
-
-  const contentType = response.headers.get('content-type');
-  const isJson = contentType && contentType.includes('application/json');
-  const data = isJson ? await response.json() : await response.text();
-
-  if (!response.ok) {
-    const errorMessage =
-      (typeof data === 'object' && data !== null && (data.message || data.error)) ||
-      `Request failed with status ${response.status}`;
-    throw new ApiError(errorMessage, response.status, data);
-  }
-
-  return data as T;
 }

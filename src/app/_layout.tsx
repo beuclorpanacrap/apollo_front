@@ -160,7 +160,7 @@ function ThemedNavigationRoot() {
 }
 
 export default function RootLayout() {
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     Inter_400Regular,
     Inter_500Medium,
     Inter_600SemiBold,
@@ -172,7 +172,7 @@ export default function RootLayout() {
   // Keep the native splash screen up (AnimatedSplashOverlay is what calls
   // SplashScreen.hideAsync()) until Poppins/Inter are actually ready, so we
   // never flash system-font text before the brand fonts swap in.
-  if (!fontsLoaded) {
+  if (!fontsLoaded && !fontError) {
     return null;
   }
 
