@@ -85,19 +85,20 @@ export const Colors = {
     scrim: 'rgba(24, 45, 32, 0.55)', // modal backdrop
   },
   dark: {
-    text: brand.cream,
-    textSecondary: '#B3C0AD',
-    textTertiary: '#8CA286',
-    background: '#1E3C2A',
-    backgroundElement: '#264B34',
-    backgroundSelected: '#2F5C3F',
-    surfaceMuted: '#24462F',
-    border: '#35573F',
-    tint: brand.springGreen,
-    tintStrong: '#3F9963',
-    onTint: '#0F2417',
-    pillGreenBg: '#2F5C3F',
-    pillGreenText: '#DCEFE3',
+    // Deep Emerald: rich green surfaces with vivid emerald accents.
+    text: '#E6F8F0',
+    textSecondary: '#ACCEC0',
+    textTertiary: '#83AC9C',
+    background: '#081B17',
+    backgroundElement: '#102D25',
+    backgroundSelected: '#194638',
+    surfaceMuted: '#0C241E',
+    border: '#2B5848',
+    tint: '#45D6A0',
+    tintStrong: '#32BD8B',
+    onTint: '#081B17',
+    pillGreenBg: '#194638',
+    pillGreenText: '#C8F3E0',
     pillPeachBg: '#4A3524',
     pillPeachText: '#F0C99A',
     pillMarigoldBg: '#4A3B1C',
@@ -114,21 +115,21 @@ export const Colors = {
     pillIrisText: '#BCCFF2',
     danger: '#E57373',
     dangerBg: '#4A2020',
-    textMuted: '#C2CEBD', // 6.01 on card, 7.41 on page, 4.72 on backgroundSelected
-    accentText: '#A3E0B8', // 6.51 on card, 8.02 on page, 5.11 on backgroundSelected
-    dangerText: '#F4A3A3', // 4.96 on card, 6.12 on page, 6.99 on dangerBg
-    borderStrong: '#78A585', // 3.52 on card, 4.33 on page
-    focusRing: '#A3E0B8',
-    placeholder: '#A6B9A0', // 4.71 on card, 5.80 on page
-    heroFrom: '#33664A',
-    heroTo: '#2A5A3C',
-    heroBorder: '#3F7A55',
-    heroText: '#FAF4E3', // 6.09 on heroFrom
-    heroTextMuted: '#DCEFE3', // 5.57 on heroFrom
-    heroChipBg: 'rgba(15, 36, 23, 0.40)',
-    heroChipText: '#FAF4E3',
-    heroGlow: 'rgba(163, 224, 184, 0.07)',
-    scrim: 'rgba(6, 18, 11, 0.68)',
+    textMuted: '#BBD8CB',
+    accentText: '#86E6BC',
+    dangerText: '#F4A3A3',
+    borderStrong: '#6EA68F',
+    focusRing: '#86E6BC',
+    placeholder: '#9ABFAE',
+    heroFrom: '#14543E',
+    heroTo: '#103E30',
+    heroBorder: '#327C5E',
+    heroText: '#E6F8F0',
+    heroTextMuted: '#C8F3E0',
+    heroChipBg: 'rgba(8, 27, 23, 0.40)',
+    heroChipText: '#E6F8F0',
+    heroGlow: 'rgba(69, 214, 160, 0.07)',
+    scrim: 'rgba(4, 16, 13, 0.68)',
   },
 } as const;
 

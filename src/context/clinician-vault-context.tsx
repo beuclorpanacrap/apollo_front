@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from 'react';
 
-import { activeVault, clearActiveVault, setActiveVault, type UnlockedVault } from '@/api/doctor.api';
+import { activeVault, clearActiveVault, getUnlockedVaults, isVaultValid, removeUnlockedVault, setActiveVault, type UnlockedVault } from '@/api/doctor.api';
 import { useAuth } from '@/context/auth-context';
 import type { Condition, Encounter, LabResult, Prescription, VisionPrescription } from '@/utils/clinician-format';
 
@@ -25,9 +25,12 @@ type RecordFor<K extends RecordKind> = K extends 'encounter'
 type ClinicianVaultValue = {
   /** The unlocked vault, or `null` when locked / expired. Always a fresh object after any change. */
   vault: UnlockedVault | null;
+  vaults: UnlockedVault[];
+  select: (next: UnlockedVault | null) => void;
+  closeCurrent: () => void;
   /** Make a freshly unlocked vault current (called after `doctorApi.unlock` resolves). */
   open: (next: UnlockedVault) => void;
-  /** Lock: clears the module-level vault and resets state (Close vault, role update, sign-out, 401). */
+  /** Clear every patient session after a role update, sign-out, or account change. */
   close: () => void;
   /** Immutable append. Writes the new vault back so Dashboard → Profile → Dashboard keeps the record. */
   addRecord: <K extends RecordKind>(kind: K, record: RecordFor<K>) => void;
@@ -42,12 +45,8 @@ const ClinicianVaultContext = createContext<ClinicianVaultValue | null>(null);
 
 /** Initial state: today's behavior — reuse the module-level vault unless its session has already lapsed. */
 function readInitial(): UnlockedVault | null {
-  const current = activeVault;
-  if (current?.sessionExpiresAt && Date.parse(current.sessionExpiresAt) <= Date.now()) {
-    clearActiveVault();
-    return null;
-  }
-  return current;
+  getUnlockedVaults();
+  return activeVault;
 }
 
 const HIGHLIGHT_MS = 6000;
@@ -60,6 +59,7 @@ const HIGHLIGHT_MS = 6000;
 export function ClinicianVaultProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [vault, setVault] = useState<UnlockedVault | null>(readInitial);
+  const [vaults, setVaults] = useState(() => [...getUnlockedVaults()]);
   const [recentIds, setRecentIds] = useState<ReadonlySet<string>>(() => new Set());
   const [expired, setExpired] = useState(false);
   const highlightTimers = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
@@ -67,14 +67,32 @@ export function ClinicianVaultProvider({ children }: { children: ReactNode }) {
   const close = useCallback(() => {
     clearActiveVault();
     setVault(null);
+    setVaults([]);
     setRecentIds(new Set());
   }, []);
 
   const open = useCallback((next: UnlockedVault) => {
+    if (!isVaultValid(next)) return;
+    setActiveVault(next);
+    setVaults([...getUnlockedVaults()]);
     setVault(next);
     setRecentIds(new Set());
     setExpired(false);
   }, []);
+
+  const select = useCallback((next: UnlockedVault | null) => {
+    if (next && !isVaultValid(next)) return;
+    setActiveVault(next);
+    setVault(next);
+    setRecentIds(new Set());
+    setExpired(false);
+  }, []);
+
+  const closeCurrent = useCallback(() => {
+    if (vault) removeUnlockedVault(vault);
+    setVaults([...getUnlockedVaults()]);
+    select(null);
+  }, [vault, select]);
 
   const addRecord = useCallback(<K extends RecordKind>(kind: K, record: RecordFor<K>) => {
     setVault((current) => {
@@ -107,6 +125,7 @@ export function ClinicianVaultProvider({ children }: { children: ReactNode }) {
   // Mirror state into the module-level vault so it survives Dashboard → Profile → Dashboard remounts.
   useEffect(() => {
     setActiveVault(vault);
+    setVaults([...getUnlockedVaults()]);
   }, [vault]);
 
   // Never let PHI outlive the person who unlocked it: sign-out (or a different account) drops the vault.
@@ -121,27 +140,27 @@ export function ClinicianVaultProvider({ children }: { children: ReactNode }) {
 
   // Expiry: a timeout for the exact moment, plus a re-check when the tab wakes (timers are throttled
   // or paused while a laptop sleeps or a tab is in the background).
-  const expiresAt = vault?.sessionExpiresAt;
   useEffect(() => {
-    if (!expiresAt || typeof document === 'undefined') return;
-    const lapse = () => {
-      close();
-      setExpired(true);
-    };
+    if (!vaults.length) return;
     const check = () => {
-      if (Date.parse(expiresAt) <= Date.now()) lapse();
+      const remaining = getUnlockedVaults();
+      if (remaining.length !== vaults.length) setVaults([...remaining]);
+      if (vault && !isVaultValid(vault)) {
+        setVault(null);
+        setRecentIds(new Set());
+        setExpired(true);
+      }
     };
-    const msLeft = Date.parse(expiresAt) - Date.now();
-    // setTimeout delays above 2^31-1 ms overflow; sessions are 24h so this is only a guard.
-    const timeout = setTimeout(check, Math.min(Math.max(0, msLeft), 2_000_000_000));
-    document.addEventListener('visibilitychange', check);
-    window.addEventListener('focus', check);
+    const nextExpiry = Math.min(...vaults.map(item => Date.parse(item.sessionExpiresAt!)));
+    const timeout = setTimeout(check, Math.min(Math.max(0, nextExpiry - Date.now()), 2_000_000_000));
+    if (typeof document !== 'undefined') document.addEventListener('visibilitychange', check);
+    if (typeof window !== 'undefined') window.addEventListener('focus', check);
     return () => {
       clearTimeout(timeout);
-      document.removeEventListener('visibilitychange', check);
-      window.removeEventListener('focus', check);
+      if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', check);
+      if (typeof window !== 'undefined') window.removeEventListener('focus', check);
     };
-  }, [expiresAt, close]);
+  }, [vaults, vault]);
 
   useEffect(() => {
     const timers = highlightTimers.current;
@@ -149,8 +168,8 @@ export function ClinicianVaultProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<ClinicianVaultValue>(
-    () => ({ vault, open, close, addRecord, recentIds, expired, acknowledgeExpiry }),
-    [vault, open, close, addRecord, recentIds, expired, acknowledgeExpiry],
+    () => ({ vault, vaults, select, closeCurrent, open, close, addRecord, recentIds, expired, acknowledgeExpiry }),
+    [vault, vaults, select, closeCurrent, open, close, addRecord, recentIds, expired, acknowledgeExpiry],
   );
 
   return <ClinicianVaultContext.Provider value={value}>{children}</ClinicianVaultContext.Provider>;

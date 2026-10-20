@@ -12,6 +12,8 @@ import {
 import { Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
+import { Dialog } from './dialog';
+import { ThemedDatePicker } from '@/components/themed-date-picker';
 import { Fonts, type AppTheme } from '@/constants/theme';
 import { useBreakpoint } from '@/hooks/use-breakpoint';
 import { useTheme } from '@/hooks/use-theme';
@@ -23,7 +25,7 @@ import { useTheme } from '@/hooks/use-theme';
  * (we use `aria-required` and show our own errors).
  *
  * The controls are real <input>/<textarea>/<select> elements so password managers, autofill, IME and
- * native date pickers keep working. Base look is inline from theme tokens; hover / focus / invalid /
+ * browser form behavior keeps working. Base look is inline from theme tokens; hover / focus / invalid /
  * disabled states live in `.ap-field` (global.css) and follow the theme through CSS variables.
  */
 
@@ -480,26 +482,75 @@ type DateFieldProps = FieldMeta & {
   onBlur?: () => void;
 };
 
-/** Native date / datetime-local input (OS-quality pickers, locale aware) in portal styling. */
+/** Registration calendar, with a separate time control for timestamp fields. */
 export function DateField({ value, onValueChange, kind = 'date', name, min, max, disabled, onBlur, ...meta }: DateFieldProps) {
   const theme = useTheme();
   const { isPhone } = useBreakpoint();
+  const [open, setOpen] = useState(false);
+  const datePart = value.split('T')[0];
+  const timePart = value.split('T')[1] || '12:00';
+  const parseDate = (date?: string) => {
+    if (!date) return undefined;
+    const parsed = new Date(`${date.split('T')[0]}T12:00:00`);
+    return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+  };
+  const style = controlStyle(theme, isPhone ? 16 : 15);
   return (
     <FormField {...meta}>
       {(a11y) => (
-        <input
-          {...a11y}
-          className="ap-field"
-          type={kind}
-          name={name}
-          value={value}
-          min={min}
-          max={max}
-          disabled={disabled}
-          onChange={(event) => onValueChange(event.target.value)}
-          onBlur={onBlur}
-          style={{ ...controlStyle(theme, isPhone ? 16 : 15), fontVariantNumeric: 'tabular-nums' }}
-        />
+        <>
+          <button
+            {...a11y}
+            className="ap-field"
+            type="button"
+            disabled={disabled}
+            aria-haspopup="dialog"
+            aria-expanded={open}
+            onClick={() => setOpen(true)}
+            onBlur={onBlur}
+            style={{ ...style, display: 'flex', alignItems: 'center', justifyContent: 'space-between', textAlign: 'left', cursor: disabled ? 'default' : 'pointer' }}
+          >
+            <span style={{ color: datePart ? theme.text : theme.textTertiary }}>{datePart || 'Select date'}</span>
+            <Ionicons name="calendar-outline" size={20} color={theme.textTertiary} />
+          </button>
+          <input type="hidden" name={name} value={value} disabled={disabled} />
+          <Dialog visible={open && !disabled} title={meta.label} size="sm" onRequestClose={() => setOpen(false)} dismissOnBackdrop>
+            <ThemedDatePicker
+              inline
+              visible={open && !disabled}
+              value={parseDate(datePart) ?? null}
+              minimumDate={parseDate(min)}
+              maximumDate={parseDate(max)}
+              onClose={() => setOpen(false)}
+              onChange={date => {
+                const iso = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                let next = kind === 'date' ? iso : `${iso}T${timePart}`;
+                if (min && next < min) next = min;
+                if (max && next > max) next = max;
+                onValueChange(next);
+              }}
+            />
+          </Dialog>
+          {kind === 'datetime-local' && (
+            <input
+              className="ap-field"
+              type="time"
+              aria-label={`${meta.label} time`}
+              aria-describedby={a11y['aria-describedby']}
+              aria-invalid={a11y['aria-invalid']}
+              value={datePart ? timePart : ''}
+              min={datePart === min?.split('T')[0] ? min?.split('T')[1] : undefined}
+              max={datePart === max?.split('T')[0] ? max?.split('T')[1] : undefined}
+              disabled={disabled || !datePart}
+              onChange={event => onValueChange(event.target.value ? `${datePart}T${event.target.value}` : '')}
+              onBlur={onBlur}
+              style={style}
+            />
+          )}
+          {value && meta.optional && (
+            <button type="button" disabled={disabled} onClick={() => { onValueChange(''); onBlur?.(); }} style={{ background: 'transparent', border: 0, color: theme.textSecondary, cursor: 'pointer', alignSelf: 'flex-start' }}>Clear date</button>
+          )}
+        </>
       )}
     </FormField>
   );

@@ -16,6 +16,7 @@ import { useRouter } from 'expo-router';
 import Head from 'expo-router/head';
 import { Ionicons } from '@expo/vector-icons';
 
+import { PatientMenu } from './patient-menu';
 import { AppMark } from '@/components/app-mark';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -143,6 +144,7 @@ function ShellFrame({
       <View style={[styles.root, { backgroundColor: background }]}>
         <SkipLink />
         <PortalHeader active={active} navLocked={navLocked} loading={loading} gutter={gutter} />
+        {!loading && active !== 'public' ? <PatientMenu disabled={navLocked || locked} /> : null}
         <ScrollView
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}

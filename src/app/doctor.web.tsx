@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Redirect, useRouter } from 'expo-router';
 
 import { ApiError } from '@/api/client';
-import { clearActiveVault, doctorApi, setActiveVault, type UnlockedVault } from '@/api/doctor.api';
+import { doctorApi } from '@/api/doctor.api';
 import { AddRecordDialog, type SavedRecord } from '@/components/portal/add-record-dialog';
 import { AddVisionDialog } from '@/components/portal/add-vision-dialog';
 import { LockedView } from '@/components/portal/locked-view';
@@ -41,7 +41,7 @@ const SLOW_AFTER_MS = 8000;
 
 function DoctorDashboard() {
   const { user, logout, updateUserLocally } = useAuth();
-  const { vault, open, close, addRecord, recentIds, expired, acknowledgeExpiry } = useClinicianVault();
+  const { vault, open, close, closeCurrent, addRecord, recentIds, expired, acknowledgeExpiry } = useClinicianVault();
   const router = useRouter();
   const toast = useToast();
 
@@ -66,11 +66,7 @@ function DoctorDashboard() {
   const alive = useRef(true);
   const busy = useRef(false);
   const requestId = useRef(0);
-  const latestVault = useRef<UnlockedVault | null>(vault);
 
-  useEffect(() => {
-    latestVault.current = vault;
-  }, [vault]);
   useEffect(() => {
     alive.current = true;
     return () => {
@@ -117,10 +113,8 @@ function DoctorDashboard() {
     setError('');
     try {
       const unlocked = await doctorApi.unlock(code);
-      // Cancelled or unmounted while waiting: drop the response (and the module-level copy it just wrote).
+      // Cancelled or unmounted while waiting: ignore the response without caching patient records.
       if (!alive.current || id !== requestId.current) {
-        if (latestVault.current) setActiveVault(latestVault.current);
-        else clearActiveVault();
         return;
       }
       setDigits(Array(6).fill(''));
@@ -157,7 +151,7 @@ function DoctorDashboard() {
   };
 
   const closeVault = () => {
-    close();
+    closeCurrent();
     setEntry(null);
     setError('');
     setTab('conditions');
@@ -189,6 +183,7 @@ function DoctorDashboard() {
     <>
       {vault ? (
         <VaultView
+          key={vault.patient?.id ?? vault.sessionExpiresAt}
           vault={vault}
           recentIds={recentIds}
           canLab={canLab}

@@ -14,7 +14,6 @@ import { TrendCard } from '@/components/vault/trend-card';
 import { AppTheme, BrandColors, Fonts, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useVault } from '@/context/vault-context';
-import { confirmAsync } from '@/utils/confirm';
 import { allFields } from '@/components/evaluate';
 import { buildTrendSeries, getLabPanel, seriesKey } from '@/utils/lab-trends';
 import { formatDateLabel } from '@/utils/vault-display';
@@ -50,7 +49,7 @@ export default function ViewLabResultScreen() {
   const styles = useMemo(() => createStyles(theme), [theme]);
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { localLabResults, testResults, remoteLabGroups, removeLabResult } = useVault();
+  const { localLabResults, testResults, remoteLabGroups } = useVault();
 
   const local = useMemo(() => localLabResults.find((l) => l.id === id), [localLabResults, id]);
   const group = useMemo(() => (!local ? remoteLabGroups.find((g) => g.id === id) : undefined), [local, remoteLabGroups, id]);
@@ -141,12 +140,7 @@ export default function ViewLabResultScreen() {
   ];
 
   const hasStat = record.numericValue != null && !panelInfo;
-  const handleDelete = async () => {
-    const confirmed = await confirmAsync('Delete this result?', "This can't be undone.");
-    if (!confirmed) return;
-    await removeLabResult(id);
-    router.back();
-  };
+
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -206,9 +200,6 @@ export default function ViewLabResultScreen() {
 
           {isPatientReported ? (
             <View style={styles.actionsRow}>
-              <View style={{ flex: 1 }}>
-                <Button label="Delete" variant="danger" icon="trash-outline" onPress={handleDelete} fullWidth />
-              </View>
             </View>
           ) : (
             <View style={styles.readOnlyNote}>

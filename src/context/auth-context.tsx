@@ -1,3 +1,4 @@
+import { clearActiveVault } from '@/api/doctor.api';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { authApi, CurrentUserResponse, LoginRequest, RegisterPatientRequest, RegisterDoctorRequest } from '@/api/auth.api';
 import { getAuthToken, removeAuthToken, onUnauthorized } from '@/api/client';
@@ -47,6 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(null);
       setToken(null);
       clearActiveScope();
+      clearActiveVault();
     });
     return unsubscribe;
   }, []);
@@ -100,6 +102,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await authApi.logout();
     } finally {
       clearActiveScope();
+      clearActiveVault();
       setUser(null);
       setToken(null);
     }

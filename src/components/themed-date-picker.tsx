@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Modal, View, Text, TouchableOpacity, StyleSheet, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { AppTheme, Colors, Fonts } from '@/constants/theme';
+import { AppTheme, Fonts } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 const WEEKDAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
@@ -18,6 +18,8 @@ type ThemedDatePickerProps = {
   onChange: (date: Date) => void;
   maximumDate?: Date;
   minimumDate?: Date;
+  /** Render inside an existing dialog that manages focus and dismissal. */
+  inline?: boolean;
 };
 
 type DayCell = { date: Date; inMonth: boolean };
@@ -72,17 +74,18 @@ export function ThemedDatePicker({
   onChange,
   maximumDate,
   minimumDate,
+  inline = false,
 }: ThemedDatePickerProps) {
   const theme = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const currentYear = new Date().getFullYear();
-  const maxYear = maximumDate ? maximumDate.getFullYear() : currentYear;
-  const minYear = minimumDate ? minimumDate.getFullYear() : maxYear - 99;
+  const maxYear = maximumDate ? maximumDate.getFullYear() : currentYear + 100;
+  const minYear = minimumDate ? minimumDate.getFullYear() : currentYear - 120;
 
   const [mode, setMode] = useState<PickerMode>('years');
   const [cursor, setCursor] = useState(() => {
-    const base = value ?? new Date(2000, 0, 1);
+    const base = value ?? new Date();
     return { year: base.getFullYear(), month: base.getMonth() };
   });
   const [yearsAnchor, setYearsAnchor] = useState(() => alignYearPage(cursor.year, minYear));
@@ -90,7 +93,7 @@ export function ThemedDatePicker({
   // Reset the whole flow every time the picker opens.
   useEffect(() => {
     if (visible) {
-      const base = value ?? new Date(2000, 0, 1);
+      const base = value ?? new Date();
       const baseYear = base.getFullYear();
       setCursor({ year: baseYear, month: base.getMonth() });
       setYearsAnchor(alignYearPage(baseYear, minYear));
@@ -138,10 +141,7 @@ export function ThemedDatePicker({
   const goToNextMonth = () =>
     setCursor((c) => (c.month === 11 ? { year: c.year + 1, month: 0 } : { year: c.year, month: c.month + 1 }));
 
-  return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose}>
-        {/* Empty onPress stops the tap from bubbling up and closing the modal */}
+  const calendar = (
         <Pressable style={styles.card} onPress={() => {}}>
           {mode === 'years' && (
             <>
@@ -299,7 +299,11 @@ export function ThemedDatePicker({
             <Text style={styles.closeButtonText}>Cancel</Text>
           </TouchableOpacity>
         </Pressable>
-      </Pressable>
+  );
+  if (inline) return visible ? calendar : null;
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable style={styles.backdrop} onPress={onClose}>{calendar}</Pressable>
     </Modal>
   );
 }
