@@ -18,7 +18,7 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function AppThemeProvider({ children }: { children: React.ReactNode }) {
   const systemScheme = useDeviceColorScheme();
-  const [themeMode, setThemeModeState] = useState<ThemeMode>('System');
+  const [themeMode, setThemeModeState] = useState<ThemeMode>('Light');
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
