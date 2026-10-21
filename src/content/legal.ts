@@ -5,7 +5,7 @@
  * ("cryptographically append-only", "non-repudiation") that have not been verified for clinicians.
  *
  * Terms of Service: a realistic MOCK written to match how Apollo actually behaves today (patient-generated
- * PINs, 15-minute PIN / 24-hour session, read-only clinician records, demo role switching). It is not legal
+ * PINs, 15-minute PIN and connection lifetime, read-only clinician records, demo role switching). It is not legal
  * advice — have counsel review and adapt it before this ships to real users.
  */
 
@@ -27,7 +27,7 @@ export const PRIVACY_POLICY: PolicyContent = {
     },
     {
       heading: '2. Scoped Access Grants',
-      body: 'Clinicians cannot access your records without an active consultation authorization. Single-use 6-digit access PINs expire automatically after 15 minutes, unlocking a strictly scoped 24-hour consultation session.',
+      body: 'Clinicians cannot access your records without an active consultation authorization. Single-use 6-digit PINs and the consultation access they grant expire 15 minutes after PIN generation. Replacing or invalidating a PIN revokes its connected access.',
     },
     {
       heading: '3. Immutable Record Integrity',
@@ -55,7 +55,7 @@ export const TERMS_OF_SERVICE: PolicyContent = {
     },
     {
       heading: '4. Consent-Based Access',
-      body: 'A clinician can open a vault only with a single-use 6-digit PIN that the patient generates. The PIN expires after 15 minutes, and the consultation session it unlocks ends after 24 hours, or sooner when the clinician closes the vault, signs out or changes role. Use that access only for the consultation the patient agreed to.',
+      body: 'A clinician can open a vault only with a single-use 6-digit PIN that the patient generates. The PIN and its connected access expire 15 minutes after PIN generation, or sooner when the patient replaces or invalidates the PIN or the clinician disconnects or changes role. Signing out clears records from the browser; valid connections can be restored on sign-in. Use that access only for the consultation the patient agreed to.',
     },
     {
       heading: '5. Clinician Responsibilities',

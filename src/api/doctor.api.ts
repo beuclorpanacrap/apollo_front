@@ -18,6 +18,13 @@ export function getUnlockedVaults() {
   return vaults;
 }
 export function clearActiveVault() { activeVault = null; vaults = []; }
+/** Reconcile with server authorization; never persist patient records or PINs in browser storage. */
+export function replaceUnlockedVaults(next: UnlockedVault[]) {
+  const selectedId = activeVault?.patient?.id;
+  vaults = next.filter(isVaultValid);
+  activeVault = vaults.find(item => item.patient?.id === selectedId) ?? null;
+  return vaults;
+}
 export function setActiveVault(next: UnlockedVault | null) {
   activeVault = next;
   if (next && isVaultValid(next)) {
@@ -25,10 +32,17 @@ export function setActiveVault(next: UnlockedVault | null) {
   }
 }
 export function removeUnlockedVault(vault: UnlockedVault) {
-  vaults = vaults.filter(item => item !== vault);
-  if (activeVault === vault) activeVault = null;
+  const matches = (item: UnlockedVault) => item === vault || (!!vault.patient?.id && item.patient?.id === vault.patient.id);
+  vaults = vaults.filter(item => !matches(item));
+  if (activeVault && matches(activeVault)) activeVault = null;
 }
 export const doctorApi = {
+  listVaults() {
+    return apiClient<UnlockedVault[]>('/api/v1/doctor/vault/sessions', { cache: 'no-store' });
+  },
+  disconnect(patientId: string) {
+    return apiClient<void>(`/api/v1/doctor/vault/patients/${encodeURIComponent(patientId)}`, { method: 'DELETE' });
+  },
   async unlock(accessCode: string) {
     // The caller retains only accepted responses; cancelled requests must not cache patient records.
     return apiClient<UnlockedVault>('/api/v1/doctor/vault/unlock', { method: 'POST', body: { accessCode } });

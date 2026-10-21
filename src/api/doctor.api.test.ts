@@ -1,11 +1,27 @@
 import { afterEach, describe, expect, it, jest } from '@jest/globals';
-import { activeVault, clearActiveVault, getUnlockedVaults, removeUnlockedVault, setActiveVault, type UnlockedVault } from './doctor.api';
+import { activeVault, clearActiveVault, getUnlockedVaults, removeUnlockedVault, replaceUnlockedVaults, setActiveVault, type UnlockedVault } from './doctor.api';
 
 jest.mock('./client', () => ({ apiClient: jest.fn() }));
 const patient = (id: string, expires = Date.now() + 60_000): UnlockedVault => ({ patient: { id }, sessionExpiresAt: new Date(expires).toISOString() });
 afterEach(() => { clearActiveVault(); jest.useRealTimers(); });
 
 describe('unlocked patient sessions', () => {
+  it('restores server connections without storing or selecting a PIN', () => {
+    const first = patient('first'), second = patient('second');
+    expect(replaceUnlockedVaults([first, second])).toEqual([first, second]);
+    expect(activeVault).toBeNull();
+  });
+  it('removes revoked patients and refreshes the selected patient from server state', () => {
+    const first = patient('first'), second = patient('second');
+    setActiveVault(first); setActiveVault(second);
+    const updated = { ...second, prescriptions: [{ id: 'new' }] };
+    replaceUnlockedVaults([updated]);
+    expect(activeVault).toBe(updated);
+    expect(getUnlockedVaults()).toEqual([updated]);
+    replaceUnlockedVaults([]);
+    expect(activeVault).toBeNull();
+    expect(getUnlockedVaults()).toEqual([]);
+  });
   it('keeps both patients while selecting another vault or returning to PIN entry', () => {
     const first = patient('first'), second = patient('second');
     setActiveVault(first); setActiveVault(second); setActiveVault(first);

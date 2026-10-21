@@ -31,7 +31,7 @@ const FAQS: FaqItem[] = [
     id: '2',
     question: 'What happens when a doctor unlocks my vault?',
     answer:
-      'The single-use PIN is consumed immediately and opens a strictly scoped 24-hour consultation session. Once the 24 hours lapse, all access automatically revokes.',
+      'The single-use PIN connects the vault to that doctor until the original PIN expires. Generating a replacement PIN or invalidating access revokes the connection.',
   },
   {
     id: '3',
@@ -136,7 +136,7 @@ export default function DocumentationScreen() {
             <View style={styles.stepContent}>
               <Text style={styles.stepTitle}>Immutable encounter logging</Text>
               <Text style={styles.stepDesc}>
-                Doctors log consultation notes and prescribe medications during the scoped 24h window.
+                Doctors log consultation notes and prescribe medications while their patient-authorized access remains valid.
               </Text>
             </View>
           </View>

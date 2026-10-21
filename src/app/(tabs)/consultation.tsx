@@ -107,8 +107,8 @@ export default function ConsultationScreen() {
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Doctor consultation</Text>
           <Text style={styles.headerSubtitle}>
-            Generate a single-use authorization PIN to grant your attending doctor 24-hour
-            consultation access.
+            Generate a single-use authorization PIN to grant your attending doctor access
+            until the PIN expires or you invalidate it.
           </Text>
         </View>
 
@@ -215,13 +215,13 @@ export default function ConsultationScreen() {
           <View style={styles.infoRow}>
             <Ionicons name="lock-closed" size={18} color={theme.tintStrong} />
             <Text style={styles.infoText}>
-              <Text style={styles.infoBold}>15-Minute Expiration:</Text> The PIN must be entered by your doctor within 15 minutes.
+              <Text style={styles.infoBold}>15-Minute Expiration:</Text> The PIN and the access it grants expire 15 minutes after generation.
             </Text>
           </View>
           <View style={styles.infoRow}>
             <Ionicons name="shield" size={18} color={theme.tintStrong} />
             <Text style={styles.infoText}>
-              <Text style={styles.infoBold}>24-Hour Scoped Session:</Text> Once verified, the doctor receives temporary 24-hour append access to write clinical notes and test results.
+              <Text style={styles.infoBold}>Patient-Controlled Access:</Text> Doctor access ends when this PIN expires. Generating a new PIN immediately invalidates the previous access.
             </Text>
           </View>
           <View style={styles.infoRow}>
